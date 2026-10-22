@@ -3,16 +3,13 @@
 #include <Adafruit_SSD1306.h>
 #include <Fonts/Picopixel.h>
 #include <EEPROM.h>
+#include <Adafruit_TinyUSB.h>
 
 // ---------- Config ----------
 constexpr uint8_t  PPQN       = 24;
-constexpr uint32_t LOOP_TICKS = PPQN * 4 * 4;  // 4 bars of 4/4 = 384
 constexpr uint16_t BPM_MIN = 30, BPM_MAX = 300;
 
 // ---------- LED brightness ----------
-// User-facing 100% = 70% PWM duty (deliberately dimmer than full white).
-// On each beat while a channel is running, status LEDs jump up by
-// FLASH_AMOUNT (20% of full PWM range) then fade back to led_max.
 constexpr uint8_t LED_MAX_PWM  = 178;   // 70% of 255
 constexpr uint8_t FLASH_AMOUNT = 76;    // 30% of 255
 
@@ -32,16 +29,36 @@ HardwareSerial* midi[2] = { &MidiOut1, &MidiOut2 };
 Adafruit_SSD1306 display(128, 32, &Wire, -1);
 HardwareTimer* tickTimer = new HardwareTimer(TIM2);
 
+// ---------- USB MIDI ----------
+Adafruit_USBD_MIDI usb_midi;
+
+// ---------- USB TX ring buffer (ISR-safe SPSC) ----------
+constexpr uint8_t USB_TX_RING_SIZE = 32;          // must be power of 2
+volatile uint8_t usb_tx_ring[USB_TX_RING_SIZE];
+volatile uint8_t usb_tx_head = 0;
+volatile uint8_t usb_tx_tail = 0;
+
+inline bool usb_tx_enqueue(uint8_t b) {
+  uint8_t next = (usb_tx_head + 1) & (USB_TX_RING_SIZE - 1);
+  if (next == usb_tx_tail) return false;          // full
+  usb_tx_ring[usb_tx_head] = b;
+  usb_tx_head = next;
+  return true;
+}
+
 // ---------- Persistent settings (emulated EEPROM in flash) ----------
 struct PersistedSettings {
-  uint8_t led_max;   // 0..LED_MAX_PWM
-  // uint8_t midi_channel;   // future
-  // uint8_t midi_clock_div; // future
-  uint8_t magic;     // marker: 0xA5 if the block has been written at least once
+  uint8_t led_max;
+  uint8_t wait_bars;
+  uint8_t usb_out_channel;
+  uint8_t magic;
 };
 
 constexpr uint16_t EEPROM_SETTINGS_ADDR = 0;
-constexpr uint8_t  EEPROM_MAGIC         = 0xA5;
+constexpr uint8_t  EEPROM_MAGIC         = 0xA9;   // bumped: layout changed
+
+// Allowed options
+constexpr uint8_t wait_options[] = {1, 2, 4, 8, 16};
 
 // ---------- State ----------
 volatile uint16_t bpm = 120;
@@ -53,33 +70,55 @@ volatile bool pending[2]  = { false, false };
 volatile bool play_req[2] = { false, false };
 volatile bool stop_req[2] = { false, false };
 volatile uint32_t loop_tick = 0;
+volatile uint32_t loop_ticks = 384; // dynamically calculated
 
-volatile uint8_t led_max = 107;  // 60% of LED_MAX_PWM; overwritten by EEPROM load
+volatile uint8_t led_max = 107;
+volatile uint8_t wait_bars = 4;
 
-// EEPROM write is deferred until MIDI is idle: the flash sector erase
-// blocks the CPU (and hence the TIM2 clock ISR) for ~1–4 s on the F411.
+volatile uint8_t usb_out_channel = 0;   // 0 = CH1, 1 = CH2
+
 bool save_pending = false;
 
 // ---------- UI state (loop() context only) ----------
-enum class Screen : uint8_t { MAIN, SETTINGS, LED_VIEW, LED_EDIT };
+enum class Screen : uint8_t {
+  MAIN, SETTINGS,
+  LED_VIEW, LED_EDIT,
+  MIDI_VIEW, MIDI_WAIT_EDIT,
+  MIDI_USB_OUT_EDIT
+};
 Screen  screen        = Screen::MAIN;
-uint8_t menu_sel      = 0;   // 0 = LEDS, 1 = MIDI
-uint8_t led_edit_orig = 0;   // value saved when entering LED_EDIT
+uint8_t menu_sel      = 0;
+uint8_t midi_menu_sel = 0;   // 0=BARS, 1=USB OUT
 
-constexpr uint8_t MENU_COUNT = 2;
+// Temporary storage for cancel actions
+uint8_t led_edit_orig = 0;
+uint8_t wait_bars_orig = 0;
+uint8_t usb_out_channel_orig = 0;
 
-// ISR-produced encoder delta, consumed by loop()
 volatile int16_t encoder_delta = 0;
 
-// ---------- Timer ISR: one call per MIDI clock tick ----------
-void onTick() {
-  static bool beatLit = false;
+// ---------- Helpers ----------
+void updateTiming() {
+  constexpr uint32_t ticks_per_bar = PPQN * 4;
+  loop_ticks = (uint32_t)wait_bars * ticks_per_bar;
+  if (loop_ticks == 0) loop_ticks = 1;
+}
 
+// Send a single byte to one physical output (and to USB if this is the mirrored channel)
+void sendMIDIByte(uint8_t idx, uint8_t b) {
+  midi[idx]->write(b);
+  if (idx == usb_out_channel) {
+    usb_tx_enqueue(b);              // USB TX happens in loop()
+  }
+}
+
+// ---------- Core tick (driven by internal timer) ----------
+void processTick() {
   // 1. Stops (immediate)
   for (int i = 0; i < 2; i++) {
     if (stop_req[i]) {
       stop_req[i] = false;
-      if (running[i]) midi[i]->write(0xFC);  // MIDI Stop
+      if (running[i]) sendMIDIByte(i, 0xFC);   // MIDI Stop
       running[i] = false;
       pending[i] = false;
       ui_dirty = true;
@@ -98,36 +137,57 @@ void onTick() {
   // 3. Start pending outputs
   bool any = running[0] || running[1];
   if (!any && (pending[0] || pending[1])) loop_tick = 0;
-  bool boundary = !any || (loop_tick % LOOP_TICKS == 0);
+  bool boundary = !any || (loop_tick % loop_ticks == 0);
 
   for (int i = 0; i < 2; i++) {
     if (pending[i] && boundary) {
       pending[i] = false;
       running[i] = true;
-      midi[i]->write(0xFA);  // MIDI Start
+      sendMIDIByte(i, 0xFA);   // MIDI Start
       ui_dirty = true;
     }
   }
 
   // 4. Send clock to running outputs
   for (int i = 0; i < 2; i++) {
-    if (running[i]) midi[i]->write(0xF8);
+    if (running[i]) sendMIDIByte(i, 0xF8);
   }
 
-  // 5. Beat LED + advance loop counter
+  // 5. Advance loop counter
   if (running[0] || running[1]) {
-    uint8_t phase = loop_tick % PPQN;
-    if (phase == 0 && !beatLit) {
-      analogWrite(PIN_LED_BEAT, led_max);
-      beatLit = true;
-    } else if (phase == 4 && beatLit) {
-      analogWrite(PIN_LED_BEAT, 0);
-      beatLit = false;
-    }
     loop_tick++;
-  } else if (beatLit) {
-    analogWrite(PIN_LED_BEAT, 0);
-    beatLit = false;
+  }
+}
+
+// ---------- Timer ISR ----------
+void onTick() {
+  processTick();
+}
+
+// ---------- USB MIDI RX (drained and ignored) ----------
+void processUSB_RX() {
+  if (!TinyUSBDevice.mounted()) return;
+  uint8_t packet[4];
+  // Drain the USB packet buffer so it never overflows.
+  while (usb_midi.readPacket(packet)) {
+    // USB MIDI IN is not used – internal timer is always the master clock.
+  }
+}
+
+// ---------- USB MIDI TX (drains ring buffer in loop context) ----------
+void processUSB_TX() {
+  if (!TinyUSBDevice.mounted()) {
+    usb_tx_tail = usb_tx_head;   // flush
+    return;
+  }
+  while (usb_tx_head != usb_tx_tail) {
+    uint8_t b = usb_tx_ring[usb_tx_tail];
+    // write() is the portable API for single-byte real-time messages.
+    // writePacket() has inconsistent return semantics across Adafruit_TinyUSB
+    // versions (some return 1, some return 4), which silently broke the TX
+    // loop and meant START / CLOCK / STOP never reached the USB device.
+    if (usb_midi.write(b) != 1) break;   // USB TX buffer full – retry next loop
+    usb_tx_tail = (usb_tx_tail + 1) & (USB_TX_RING_SIZE - 1);
   }
 }
 
@@ -136,7 +196,7 @@ void applyTempo() {
   tickTimer->setOverflow(us, MICROSEC_FORMAT);
 }
 
-// ---------- Encoder ISR (accumulates a delta) ----------
+// ---------- Encoder ISR ----------
 void onEncoder() {
   static uint8_t state = 0;
   static int8_t acc = 0;
@@ -149,7 +209,7 @@ void onEncoder() {
   }
 }
 
-// Consume encoder delta in the current screen's context
+// ---------- Encoder processing ----------
 void processEncoder() {
   int16_t delta;
   noInterrupts();
@@ -172,65 +232,112 @@ void processEncoder() {
     }
     case Screen::SETTINGS: {
       int16_t v = (int16_t)menu_sel + delta;
-      while (v < 0) v += MENU_COUNT;
-      v %= MENU_COUNT;
+      while (v < 0) v += 2;
+      v %= 2;
       menu_sel = (uint8_t)v;
       ui_dirty = true;
       break;
     }
     case Screen::LED_VIEW:
-      break;  // no-op
+      break;
     case Screen::LED_EDIT: {
-      int16_t v = (int16_t)led_max + delta * 5;   // 5-step granularity
+      int16_t v = (int16_t)led_max + delta * 5;
       if (v < 0)              v = 0;
       if (v > LED_MAX_PWM)    v = LED_MAX_PWM;
       led_max  = (uint8_t)v;
       ui_dirty = true;
       break;
     }
+    case Screen::MIDI_VIEW: {
+      int16_t v = (int16_t)midi_menu_sel + delta;
+      while (v < 0) v += 2;
+      v %= 2;
+      midi_menu_sel = (uint8_t)v;
+      ui_dirty = true;
+      break;
+    }
+    case Screen::MIDI_WAIT_EDIT: {
+      int idx = 0;
+      for (int i = 0; i < 5; i++) if (wait_options[i] == wait_bars) idx = i;
+      idx = (idx + delta) % 5;
+      if (idx < 0) idx += 5;
+      wait_bars = wait_options[idx];
+      updateTiming();
+      ui_dirty = true;
+      break;
+    }
+    case Screen::MIDI_USB_OUT_EDIT: {
+      usb_out_channel = (usb_out_channel == 0) ? 1 : 0;
+      ui_dirty = true;
+      break;
+    }
   }
 }
 
-// ---------- Encoder push button (PB13) ----------
+// ---------- Buttons ----------
 void onEncoderButton() {
   switch (screen) {
     case Screen::MAIN:
-      break;  // unused on main screen
+      break;
     case Screen::SETTINGS:
-      if (menu_sel == 0) {          // "LEDS"
-        screen   = Screen::LED_VIEW;
-        ui_dirty = true;
+      if (menu_sel == 0) {
+        screen = Screen::LED_VIEW;
+      } else if (menu_sel == 1) {
+        screen = Screen::MIDI_VIEW;
+        midi_menu_sel = 0;
       }
-      // "MIDI" item — TODO
+      ui_dirty = true;
       break;
     case Screen::LED_VIEW:
-      led_edit_orig = led_max;      // remember for cancel
-      screen   = Screen::LED_EDIT;
+      led_edit_orig = led_max;
+      screen = Screen::LED_EDIT;
       ui_dirty = true;
       break;
     case Screen::LED_EDIT:
-      // Confirm / save: mark pending. The flash write is deferred to loop()
-      // and only performed once nothing is playing, so the MIDI clock ISR
-      // is not starved by the multi-second sector erase.
       save_pending = true;
-      screen   = Screen::LED_VIEW;
+      screen = Screen::LED_VIEW;
+      ui_dirty = true;
+      break;
+    case Screen::MIDI_VIEW:
+      switch (midi_menu_sel) {
+        case 0: wait_bars_orig = wait_bars;     screen = Screen::MIDI_WAIT_EDIT;     break;
+        case 1: usb_out_channel_orig = usb_out_channel; screen = Screen::MIDI_USB_OUT_EDIT; break;
+      }
+      ui_dirty = true;
+      break;
+    case Screen::MIDI_WAIT_EDIT:
+      save_pending = true;
+      screen = Screen::MIDI_VIEW;
+      ui_dirty = true;
+      break;
+    case Screen::MIDI_USB_OUT_EDIT:
+      save_pending = true;
+      screen = Screen::MIDI_VIEW;
       ui_dirty = true;
       break;
   }
 }
 
 void pollEncoderButton() {
-  static uint32_t lastMs   = 0;
-  static bool     lastState = true;
-  bool s = digitalRead(PIN_ENC_BTN);
-  if (!s && lastState && millis() - lastMs > 25) {
-    lastMs = millis();
-    onEncoderButton();
+  static uint32_t lastDebounceTime = 0;
+  static bool buttonState = HIGH;
+  static bool lastReading = HIGH;
+
+  bool reading = digitalRead(PIN_ENC_BTN);
+  if (reading != lastReading) {
+    lastDebounceTime = millis();
   }
-  lastState = s;
+  if ((millis() - lastDebounceTime) > 30) {
+    if (reading != buttonState) {
+      buttonState = reading;
+      if (buttonState == LOW) {
+        onEncoderButton();
+      }
+    }
+  }
+  lastReading = reading;
 }
 
-// ---------- Settings button (PB14): open menu / back one level ----------
 void onSettingsButton() {
   switch (screen) {
     case Screen::MAIN:
@@ -247,60 +354,101 @@ void onSettingsButton() {
       ui_dirty = true;
       break;
     case Screen::LED_EDIT:
-      led_max  = led_edit_orig;     // cancel edit (no EEPROM write)
+      led_max  = led_edit_orig;
       screen   = Screen::LED_VIEW;
+      ui_dirty = true;
+      break;
+    case Screen::MIDI_VIEW:
+      screen   = Screen::SETTINGS;
+      ui_dirty = true;
+      break;
+    case Screen::MIDI_WAIT_EDIT:
+      wait_bars = wait_bars_orig;
+      updateTiming();
+      screen   = Screen::MIDI_VIEW;
+      ui_dirty = true;
+      break;
+    case Screen::MIDI_USB_OUT_EDIT:
+      usb_out_channel = usb_out_channel_orig;
+      screen   = Screen::MIDI_VIEW;
       ui_dirty = true;
       break;
   }
 }
 
 void pollSettingsButton() {
-  static uint32_t lastMs   = 0;
-  static bool     lastState = true;
-  bool s = digitalRead(PIN_BTN_SETTINGS);
-  if (!s && lastState && millis() - lastMs > 25) {
-    lastMs = millis();
-    onSettingsButton();
+  static uint32_t lastDebounceTime = 0;
+  static bool buttonState = HIGH;
+  static bool lastReading = HIGH;
+
+  bool reading = digitalRead(PIN_BTN_SETTINGS);
+  if (reading != lastReading) {
+    lastDebounceTime = millis();
   }
-  lastState = s;
+  if ((millis() - lastDebounceTime) > 30) {
+    if (reading != buttonState) {
+      buttonState = reading;
+      if (buttonState == LOW) {
+        onSettingsButton();
+      }
+    }
+  }
+  lastReading = reading;
 }
 
-// ---------- MIDI channel buttons ----------
 void pollButtons() {
-  static uint32_t lastMs[2] = { 0, 0 };
-  static bool lastState[2] = { true, true };
+  static uint32_t lastDebounceTime[2] = {0, 0};
+  static bool buttonState[2] = {HIGH, HIGH};
+  static bool lastReading[2] = {HIGH, HIGH};
+
   for (int i = 0; i < 2; i++) {
-    bool s = digitalRead(PIN_BTN[i]);
-    if (!s && lastState[i] && millis() - lastMs[i] > 25) {
-      lastMs[i] = millis();
-      if (running[i] || pending[i]) stop_req[i] = true;
-      else                          play_req[i] = true;
+    bool reading = digitalRead(PIN_BTN[i]);
+    if (reading != lastReading[i]) {
+      lastDebounceTime[i] = millis();
     }
-    lastState[i] = s;
+    if ((millis() - lastDebounceTime[i]) > 30) {
+      if (reading != buttonState[i]) {
+        buttonState[i] = reading;
+        if (buttonState[i] == LOW) {
+          if (running[i] || pending[i]) stop_req[i] = true;
+          else                          play_req[i] = true;
+        }
+      }
+    }
+    lastReading[i] = reading;
   }
 }
 
 // ---------- Status LEDs ----------
-constexpr uint16_t FADE_PERIOD_MS = 1400;  // pending (WAIT) triangle period
+constexpr uint16_t FADE_PERIOD_MS = 1400;
 
 void updateStatusLeds() {
-  uint32_t t   = millis() % FADE_PERIOD_MS;
-  uint32_t tick = loop_tick;                       // atomic 32-bit read
+  uint32_t t    = millis() % FADE_PERIOD_MS;
+  uint32_t tick = loop_tick;
   bool any_running = running[0] || running[1];
 
-  // Beat-synced flash: peak at phase 0, linear fade to 0 at end of beat.
-  // Only computed when something is running — the beat is meaningful only
-  // then, and loop_tick doesn't advance otherwise.
+  uint8_t phase = 0;
+  if (any_running) {
+    phase = (uint8_t)((tick + PPQN - 1) % PPQN);
+  }
+
+  if (any_running) {
+    uint16_t peak = (uint16_t)led_max + FLASH_AMOUNT;
+    if (peak > 255) peak = 255;
+    uint8_t beat_duty = (uint32_t)peak * (PPQN - 1 - phase) / (PPQN - 1);
+    analogWrite(PIN_LED_BEAT, beat_duty);
+  } else {
+    analogWrite(PIN_LED_BEAT, 0);
+  }
+
   uint8_t flash = 0;
   if (any_running) {
-    uint8_t phase = tick % PPQN;                   // 0..23
     flash = (uint32_t)FLASH_AMOUNT * (PPQN - 1 - phase) / (PPQN - 1);
   }
 
   for (int i = 0; i < 2; i++) {
     uint8_t duty;
     if (running[i]) {
-      // Base + beat flash, capped at 255.
       uint16_t v = (uint16_t)led_max + flash;
       duty = (v > 255) ? 255 : (uint8_t)v;
     } else if (pending[i]) {
@@ -315,7 +463,6 @@ void updateStatusLeds() {
 }
 
 // ---------- Display ----------
-// Draw a string whose rightmost ink pixel is `rightMargin` px from the display edge.
 void drawRightAligned(const char* s, int16_t y, int16_t rightMargin = 0) {
   int16_t x1, y1;
   uint16_t w, h;
@@ -330,26 +477,40 @@ void drawUI() {
   display.setFont(&Picopixel);
 
   switch (screen) {
-    case Screen::MAIN:
+    case Screen::MAIN: {
       display.setTextSize(4);
-      display.setCursor(6, 26);
+      display.setCursor(6, 22);
       display.print("BPM: ");
       display.print(bpm);
+
+      int active_bar = -1;
+      if (running[0] || running[1]) {
+        active_bar = (loop_tick / PPQN) % 4;
+      }
+
+      int bar_w = display.width() / 4;
+      for (int i = 0; i < 4; i++) {
+        int y_pos = 28;
+        if (i == active_bar) {
+          y_pos = 31;
+        }
+        display.fillRect(i * bar_w + 2, y_pos, bar_w - 4, 4, SSD1306_WHITE);
+      }
       break;
+    }
 
     case Screen::SETTINGS:
       display.setTextSize(3);
       display.setCursor(0, 12);
-      display.print(menu_sel == 0 ? "> LEDS <" : "  LEDS");
+      display.print(menu_sel == 0 ? "> LEDS" : "  LEDS");
       display.setCursor(0, 30);
-      display.print(menu_sel == 1 ? "> MIDI <" : "  MIDI");
+      display.print(menu_sel == 1 ? "> MIDI" : "  MIDI");
       break;
 
     case Screen::LED_VIEW: {
       display.setTextSize(3);
       display.setCursor(0, 26);
       display.print(save_pending ? "LEDS*" : "LEDS");
-
       char pct[8];
       snprintf(pct, sizeof(pct), "%u%%", (uint16_t)led_max * 100 / LED_MAX_PWM);
       drawRightAligned(pct, 26);
@@ -360,10 +521,43 @@ void drawUI() {
       display.setTextSize(3);
       display.setCursor(0, 26);
       display.print("LEDS >");
-
       char pct[8];
       snprintf(pct, sizeof(pct), "%u%%", (uint16_t)led_max * 100 / LED_MAX_PWM);
       drawRightAligned(pct, 26);
+      break;
+    }
+
+    // ---------- MIDI menu: exactly two items, both visible ----------
+    case Screen::MIDI_VIEW: {
+      display.setTextSize(3);
+
+      display.setCursor(0, 12);
+      display.print(midi_menu_sel == 0 ? ">BARS" : " BARS");
+      char barsBuf[5];
+      snprintf(barsBuf, sizeof(barsBuf), "%u", wait_bars);
+      drawRightAligned(barsBuf, 12);
+
+      display.setCursor(0, 30);
+      display.print(midi_menu_sel == 1 ? ">OUT" : " OUT");
+      drawRightAligned(usb_out_channel == 0 ? "CH1" : "CH2", 30);
+      break;
+    }
+
+    case Screen::MIDI_WAIT_EDIT: {
+      display.setTextSize(3);
+      display.setCursor(0, 26);
+      display.print("BARS >");
+      char buf[8];
+      snprintf(buf, sizeof(buf), "%u", wait_bars);
+      drawRightAligned(buf, 26);
+      break;
+    }
+
+    case Screen::MIDI_USB_OUT_EDIT: {
+      display.setTextSize(3);
+      display.setCursor(0, 26);
+      display.print("OUT >");
+      drawRightAligned(usb_out_channel == 0 ? "CH1" : "CH2", 26);
       break;
     }
   }
@@ -398,13 +592,41 @@ void setup() {
   Wire.setClock(400000);
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
 
-  // --- Load persisted settings from emulated EEPROM ---
+  // --- USB MIDI setup ---
+  // Descriptors must be set BEFORE begin() so they take effect during enumeration.
+  TinyUSBDevice.setManufacturerDescriptor(".axs instruments");
+  TinyUSBDevice.setProductDescriptor("DCLK - Dual MIDI Clock");
+  usb_midi.setStringDescriptor("DCLK MIDI");
+  usb_midi.begin();
+
+  // Brief wait for USB enumeration (non-blocking with task())
+  uint32_t usb_start = millis();
+  while (!TinyUSBDevice.mounted() && (millis() - usb_start) < 3000) {
+    TinyUSBDevice.task();
+    delay(1);
+  }
+
+  // --- Load persisted settings ---
   EEPROM.begin();
   PersistedSettings s;
   EEPROM.get(EEPROM_SETTINGS_ADDR, s);
   if (s.magic == EEPROM_MAGIC) {
-    led_max = s.led_max;  // first boot keeps the 107 default
+    led_max = s.led_max;
+    if (led_max > LED_MAX_PWM) led_max = LED_MAX_PWM;
+
+    wait_bars = s.wait_bars;
+    bool valid_wb = false;
+    for (uint8_t wb : wait_options) if (wb == wait_bars) valid_wb = true;
+    if (!valid_wb) wait_bars = 4;
+
+    usb_out_channel = s.usb_out_channel;
+    if (usb_out_channel > 1) usb_out_channel = 0;
+  } else {
+    led_max = 107;
+    wait_bars = 4;
+    usb_out_channel = 0;
   }
+  updateTiming();
 
   applyTempo();
   tickTimer->setInterruptPriority(0, 0);
@@ -413,6 +635,10 @@ void setup() {
 }
 
 void loop() {
+  TinyUSBDevice.task();
+  processUSB_RX();
+  processUSB_TX();
+
   pollButtons();
   pollEncoderButton();
   pollSettingsButton();
@@ -425,27 +651,34 @@ void loop() {
     ui_dirty = true;
   }
 
-  // Deferred EEPROM write: only when nothing is playing or pending.
-  // The flash sector erase blocks the CPU for ~1-4 s on the F411, which
-  // would starve the TIM2 clock ISR and cause a visible MIDI gap.
+  // Trigger a redraw when the active beat bar changes
+  static int last_active_bar = -2;
+  int current_active_bar = -1;
+  if (running[0] || running[1]) {
+    current_active_bar = (loop_tick / PPQN) % 4;
+  }
+  if (current_active_bar != last_active_bar) {
+    last_active_bar = current_active_bar;
+    ui_dirty = true;
+  }
+
   if (save_pending && !running[0] && !running[1] &&
                       !pending[0] && !pending[1]) {
     save_pending = false;
 
-    // Explicitly force all LEDs off before the freeze. The PWM timers
-    // keep running during the flash erase, so any non-zero duty left
-    // here would stay visible for the whole 1-4 s block.
     analogWrite(PIN_LED_BEAT,      0);
     analogWrite(PIN_LED_STATUS[0], 0);
     analogWrite(PIN_LED_STATUS[1], 0);
 
     PersistedSettings s;
     EEPROM.get(EEPROM_SETTINGS_ADDR, s);
-    if (s.magic != EEPROM_MAGIC || s.led_max != led_max) {
-      PersistedSettings ns = { led_max, EEPROM_MAGIC };
+    if (s.magic != EEPROM_MAGIC || s.led_max != led_max ||
+        s.wait_bars != wait_bars ||
+        s.usb_out_channel != usb_out_channel) {
+      PersistedSettings ns = { led_max, wait_bars, usb_out_channel, EEPROM_MAGIC };
       EEPROM.put(EEPROM_SETTINGS_ADDR, ns);
     }
-    ui_dirty = true;   // refresh screen to clear the "*"
+    ui_dirty = true;
   }
 
   if (ui_dirty) {
