@@ -1,7 +1,7 @@
 // ********************* //
 // DCLK                  //
 // Dual MIDI Clock       //
-// firmware version 0.1  //
+// firmware version 1.0  //
 // hardware version: 1.0 //
 // powered by STM32 BP   //
 // ********************* //
@@ -89,7 +89,7 @@
 #endif
 
 // ---------- Firmware version (shown on the ABOUT screen; keep in sync with the header) ----------
-const char* const FW_VERSION = "0.1";
+const char* const FW_VERSION = "1.0";
 
 // ---------- Config ----------
 constexpr uint8_t  PPQN       = 24;
