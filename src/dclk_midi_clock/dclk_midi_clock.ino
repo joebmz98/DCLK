@@ -1,7 +1,7 @@
 // ********************* //
 // DCLK                  //
 // Dual MIDI Clock       //
-// firmware version 1.1 //
+// firmware version 1.2  //
 // hardware version: 1.0 //
 // powered by STM32 BP   //
 // ********************* //
@@ -89,7 +89,7 @@
 #endif
 
 // ---------- Firmware version (shown on the ABOUT screen; keep in sync with the header) ----------
-const char* const FW_VERSION = "1.1";
+const char* const FW_VERSION = "1.2";
 
 // ---------- Config ----------
 constexpr uint8_t  PPQN       = 24;
@@ -121,6 +121,7 @@ HardwareSerial MidiOut2(PA3, PA2);   // USART2 (RX unused)
 HardwareSerial* midi[2] = { &MidiOut1, &MidiOut2 };
 
 Adafruit_SSD1306 display(128, 32, &Wire, -1);
+constexpr uint8_t DISPLAY_ROTATION = 2;   // 0 = normal, 2 = rotated 180 degrees
 HardwareTimer* tickTimer = new HardwareTimer(TIM2);
 
 // ---------- USB MIDI ----------
@@ -1138,6 +1139,7 @@ void setup() {
   Wire.begin();
   Wire.setClock(400000);
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.setRotation(DISPLAY_ROTATION);   // applies to every screen, incl. boot animation
 
   bootAnimation();
 
