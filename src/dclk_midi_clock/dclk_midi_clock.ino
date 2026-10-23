@@ -94,6 +94,7 @@ const char* const FW_VERSION = "1.0";
 // ---------- Config ----------
 constexpr uint8_t  PPQN       = 24;
 constexpr uint16_t BPM_MIN = 30, BPM_MAX = 300;
+constexpr uint16_t BPM_SAVE_DELAY_MS = 750;   // save BPM after this long without a change
 
 // ---------- LED brightness ----------
 // Each level: steady brightness while playing + extra flash on each beat
@@ -158,6 +159,8 @@ constexpr uint8_t N_DIV   = sizeof(div_options);
 constexpr uint8_t N_SAVER = sizeof(saver_options);
 
 // ---------- Persistent settings (emulated EEPROM in flash) ----------
+// BPM sits after 'magic' so settings saved by older firmware stay valid
+// (their BPM bytes read as erased flash and fall back to the default).
 struct PersistedSettings {
   uint8_t led_level;
   uint8_t wait_bars;
@@ -166,10 +169,12 @@ struct PersistedSettings {
   uint8_t stop_quant;
   uint8_t saver_idx;
   uint8_t magic;
+  uint8_t bpm_lo;
+  uint8_t bpm_hi;
 };
 
 constexpr uint16_t EEPROM_SETTINGS_ADDR = 0;
-constexpr uint8_t  EEPROM_MAGIC         = 0xAD;   // bumped: layout changed
+constexpr uint8_t  EEPROM_MAGIC         = 0xAD;
 
 // ---------- State ----------
 volatile uint16_t bpm = 120;
@@ -202,6 +207,11 @@ volatile bool    usb_running     = false; // USB host has seen Start (and no Sto
 volatile bool    usb_resync      = false; // host just (re)connected: re-send Start at next boundary
 
 bool save_pending = false;
+
+// BPM save debounce: armed on every BPM change, fires once the encoder
+// has been idle for BPM_SAVE_DELAY_MS
+bool     bpm_save_armed = false;
+uint32_t bpm_changed_ms = 0;
 
 // ---------- UI state (loop() context only) ----------
 enum class Screen : uint8_t {
@@ -606,8 +616,10 @@ void processEncoder() {
       if (v > (int16_t)BPM_MAX) v = BPM_MAX;
       if (v != (int16_t)bpm) {
         bpm = (uint16_t)v;
-        bpm_changed = true;
-        ui_dirty    = true;
+        bpm_changed    = true;
+        ui_dirty       = true;
+        bpm_save_armed = true;        // restart the idle timer
+        bpm_changed_ms = millis();
       }
       break;
     }
@@ -1056,10 +1068,13 @@ void usbInit() {
 }
 
 // ---------- Settings load / save ----------
+// Uses the core's buffered EEPROM API: EEPROM.put() erases and rewrites the
+// whole flash sector once per changed byte, the buffer does it once per save.
 void loadSettings() {
-  EEPROM.begin();
   PersistedSettings s;
-  EEPROM.get(EEPROM_SETTINGS_ADDR, s);
+  eeprom_buffer_fill();
+  uint8_t* p = (uint8_t*)&s;
+  for (size_t i = 0; i < sizeof(s); i++) p[i] = eeprom_buffered_read_byte(EEPROM_SETTINGS_ADDR + i);
   if (s.magic != EEPROM_MAGIC) return;   // keep defaults
 
   led_level = (s.led_level < N_LED_LEVELS) ? s.led_level : 1;
@@ -1068,19 +1083,27 @@ void loadSettings() {
   for (int i = 0; i < 2; i++) clk_div[i] = div_options[indexOf(div_options, N_DIV, s.clk_div[i])];
   stop_quant = s.stop_quant != 0;
   saver_idx  = (s.saver_idx < N_SAVER) ? s.saver_idx : 2;
+  uint16_t b = (uint16_t)s.bpm_lo | ((uint16_t)s.bpm_hi << 8);
+  if (b >= BPM_MIN && b <= BPM_MAX) bpm = b;   // else keep the default
 }
 
 void saveSettings() {
   PersistedSettings ns = {
     led_level, wait_bars, usb_out_channel,
     { clk_div[0], clk_div[1] },
-    (uint8_t)stop_quant, saver_idx, EEPROM_MAGIC
+    (uint8_t)stop_quant, saver_idx, EEPROM_MAGIC,
+    (uint8_t)(bpm & 0xFF), (uint8_t)(bpm >> 8)
   };
-  PersistedSettings s;
-  EEPROM.get(EEPROM_SETTINGS_ADDR, s);
-  if (memcmp(&s, &ns, sizeof(ns)) != 0) {
-    EEPROM.put(EEPROM_SETTINGS_ADDR, ns);
+  eeprom_buffer_fill();
+  const uint8_t* p = (const uint8_t*)&ns;
+  bool changed = false;
+  for (size_t i = 0; i < sizeof(ns); i++) {
+    if (eeprom_buffered_read_byte(EEPROM_SETTINGS_ADDR + i) != p[i]) {
+      eeprom_buffered_write_byte(EEPROM_SETTINGS_ADDR + i, p[i]);
+      changed = true;
+    }
   }
+  if (changed) eeprom_buffer_flush();   // one sector erase + program
 }
 
 // ---------- Setup / loop ----------
@@ -1170,7 +1193,14 @@ void loop() {
     ui_dirty = true;
   }
 
-  // Flash writes stall the CPU, so only save while every output is stopped
+  // BPM idle long enough -> queue a save
+  if (bpm_save_armed && (millis() - bpm_changed_ms) >= BPM_SAVE_DELAY_MS) {
+    bpm_save_armed = false;
+    save_pending   = true;
+  }
+
+  // Flash writes stall the CPU, so only save while every output is stopped.
+  // A BPM change made while playing is saved as soon as everything stops.
   if (save_pending && usb_out_req < 0 &&
       !running[0] && !running[1] &&
       !pending[0] && !pending[1]) {
