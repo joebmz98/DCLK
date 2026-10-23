@@ -54,14 +54,6 @@
       "diff_pair_dimensions": [],
       "drc_exclusions": [
         [
-          "copper_edge_clearance|142878328|118928571|9b89ba0d-8d85-4332-86e8-507f9ec9d420|d49a72bb-257b-40d2-bcf4-95e4fa13de51",
-          ""
-        ],
-        [
-          "copper_edge_clearance|143000000|211000000|0b0bf6d6-4437-43de-979e-9884ef57711e|12b38534-0d97-426b-9513-6062f96474b1",
-          ""
-        ],
-        [
           "courtyards_overlap|122995000|37255000|25762c41-70f0-4bf7-829a-4b4faf3eceae|9469cf39-4c9e-4d79-9e46-d690db724341",
           "wont interact physically"
         ],

@@ -6922,7 +6922,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "220R"
+		(property "Value" "33R"
 			(at 82.55 109.22 90)
 			(effects
 				(font
@@ -9486,7 +9486,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "220R"
+		(property "Value" "33R"
 			(at 38.1 109.22 90)
 			(effects
 				(font
@@ -11621,7 +11621,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "220R"
+		(property "Value" "33R"
 			(at 86.36 109.22 90)
 			(effects
 				(font
@@ -12327,7 +12327,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "220R"
+		(property "Value" "33R"
 			(at 41.91 109.22 90)
 			(effects
 				(font
