@@ -1,4 +1,4 @@
-48325382825519048
+48327175663558941
 ATmega32U4
 ATmega32U4
 
@@ -192083,6 +192083,13 @@ keychain
 heartPicture2
 
 
+0
+0
+0
+mouse bites
+MouseBite_Tab_5mm_Gap2mm
+Breakaway tab for a 2.0mm routed gap: Edge.Cuts bridge lines + 6x Ø0.6mm NPTH per side, 0.95mm pitch, 0.2mm inside each board edge. Origin = centre of the gap. Cut both board edges between x=-2.5 and x=+2.5.
+mouse bite breakaway tab panel
 0
 0
 0

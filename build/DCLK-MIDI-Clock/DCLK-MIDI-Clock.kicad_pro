@@ -54,23 +54,31 @@
       "diff_pair_dimensions": [],
       "drc_exclusions": [
         [
-          "courtyards_overlap|122995000|37255000|25762c41-70f0-4bf7-829a-4b4faf3eceae|9469cf39-4c9e-4d79-9e46-d690db724341",
-          "wont interact physically"
-        ],
-        [
-          "invalid_outline|141000000|213000000|7861a6fd-90f6-4fb1-8c68-f272fb358133|0b0bf6d6-4437-43de-979e-9884ef57711e",
+          "copper_edge_clearance|100155258|118152597|5902b0c1-16ee-4003-b003-869a854aaf8f|4890223c-b950-4461-9c2c-3c7b9e53c60f",
           ""
         ],
         [
-          "invalid_outline|20000000|213000000|7861a6fd-90f6-4fb1-8c68-f272fb358133|48eaae53-3b76-4f82-88b8-b8e26b0ec54e",
+          "copper_edge_clearance|123655258|118152597|80592450-4edd-4cc9-a2c5-976bcc118c72|b8572170-afc5-4d5a-9e4a-85c49555c4f4",
           ""
         ],
         [
-          "zones_intersect|143000000|150000000|90434956-c183-4940-9b86-d6c8cfb60caa|d562ac0b-0d2d-45c6-99c3-c1479bd8a49d",
+          "copper_edge_clearance|85155258|118152597|a4ccc28d-1b9d-4ad8-8cf2-ed941c4f8f0c|295b4261-bbc8-458b-8841-462f8aac234e",
           ""
         ],
         [
-          "zones_intersect|143000000|87000000|28389f51-834b-4cfe-97c0-ab61aef8e4e4|90434956-c183-4940-9b86-d6c8cfb60caa",
+          "courtyards_overlap|122995000|39255000|25762c41-70f0-4bf7-829a-4b4faf3eceae|9469cf39-4c9e-4d79-9e46-d690db724341",
+          ""
+        ],
+        [
+          "shorting_items|99870000|77620000|94772f24-110a-43c8-a945-a8ec1a0a10d1|ba4604b9-0406-43b8-b037-ad96a8da979b",
+          ""
+        ],
+        [
+          "solder_mask_bridge|99870000|77620000|ba4604b9-0406-43b8-b037-ad96a8da979b|94772f24-110a-43c8-a945-a8ec1a0a10d1",
+          ""
+        ],
+        [
+          "starved_thermal|31510001|74025000|28389f51-834b-4cfe-97c0-ab61aef8e4e4|610e191b-9e35-4502-b013-dc9b909569d2|F.Cu",
           ""
         ]
       ],
