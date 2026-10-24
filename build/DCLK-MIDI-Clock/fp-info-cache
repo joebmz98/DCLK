@@ -1,4 +1,4 @@
-48327175663558941
+48332554119450209
 ATmega32U4
 ATmega32U4
 
@@ -192065,6 +192065,27 @@ Z_module_black_pill_STM32F411
 0
 40
 40
+dclk
+DCLK-Back-Panel_FSILK
+
+
+0
+0
+0
+dclk
+DCLK-Front-Panel_FMASK
+
+
+0
+0
+0
+dclk
+DCLK-Front-Panel_FSILK
+
+
+0
+0
+0
 keychain
 cow
 
