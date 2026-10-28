@@ -8555,7 +8555,7 @@
 				(hide yes)
 			)
 		)
-		(property "Part Number" "0603YC104KAT2A"
+		(property "Part Number" ""
 			(at 120.65 104.648 0)
 			(effects
 				(font
@@ -8574,7 +8574,7 @@
 				(justify right)
 			)
 		)
-		(property "JLCPCB ID" "C14663"
+		(property "JLCPCB ID" ""
 			(at 116.84 102.87 0)
 			(effects
 				(font
@@ -9877,7 +9877,7 @@
 				(hide yes)
 			)
 		)
-		(property "Part Number" "0603YC104KAT2A"
+		(property "Part Number" ""
 			(at 127 19.558 0)
 			(effects
 				(font
@@ -9896,7 +9896,7 @@
 				(justify right)
 			)
 		)
-		(property "JLCPCB ID" "C14663"
+		(property "JLCPCB ID" ""
 			(at 123.19 17.78 0)
 			(effects
 				(font
