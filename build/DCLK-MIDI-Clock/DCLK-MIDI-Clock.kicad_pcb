@@ -2100,7 +2100,7 @@
 				)
 			)
 		)
-		(property "Part Number" "RT0402FRE0710KL"
+		(property "Part Number" ""
 			(at 0 0 180)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -2139,7 +2139,7 @@
 				)
 			)
 		)
-		(property "Part Number 2" "RT0402DRE0710KL"
+		(property "Part Number 2" ""
 			(at 0 0 180)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -6445,7 +6445,7 @@
 				)
 			)
 		)
-		(property "Part Number" "RT0402FRE0710KL"
+		(property "Part Number" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -6484,7 +6484,7 @@
 				)
 			)
 		)
-		(property "Part Number 2" "RT0402DRE0710KL"
+		(property "Part Number 2" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -6950,7 +6950,7 @@
 				)
 			)
 		)
-		(property "Part Number" "RT0402FRE0710KL"
+		(property "Part Number" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -6989,7 +6989,7 @@
 				)
 			)
 		)
-		(property "Part Number 2" "RT0402DRE0710KL"
+		(property "Part Number 2" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -7502,7 +7502,7 @@
 				)
 			)
 		)
-		(property "Part Number" "RT0402FRE0710KL"
+		(property "Part Number" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -7541,7 +7541,7 @@
 				)
 			)
 		)
-		(property "Part Number 2" "RT0402DRE0710KL"
+		(property "Part Number 2" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -8588,7 +8588,7 @@
 				)
 			)
 		)
-		(property "Part Number" "RT0402FRE0710KL"
+		(property "Part Number" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -8627,7 +8627,7 @@
 				)
 			)
 		)
-		(property "Part Number 2" "RT0402DRE0710KL"
+		(property "Part Number 2" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -8823,7 +8823,7 @@
 				)
 			)
 		)
-		(property "Part Number" "RT0402FRE0710KL"
+		(property "Part Number" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -8862,7 +8862,7 @@
 				)
 			)
 		)
-		(property "Part Number 2" "RT0402DRE0710KL"
+		(property "Part Number 2" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -9120,7 +9120,7 @@
 				)
 			)
 		)
-		(property "Part Number" "RT0402FRE0710KL"
+		(property "Part Number" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -9159,7 +9159,7 @@
 				)
 			)
 		)
-		(property "Part Number 2" "RT0402DRE0710KL"
+		(property "Part Number 2" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -14058,7 +14058,7 @@
 				)
 			)
 		)
-		(property "Part Number" "RT0402FRE0710KL"
+		(property "Part Number" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -14097,7 +14097,7 @@
 				)
 			)
 		)
-		(property "Part Number 2" "RT0402DRE0710KL"
+		(property "Part Number 2" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -14801,7 +14801,7 @@
 				)
 			)
 		)
-		(property "Part Number" "RT0402FRE0710KL"
+		(property "Part Number" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -14840,7 +14840,7 @@
 				)
 			)
 		)
-		(property "Part Number 2" "RT0402DRE0710KL"
+		(property "Part Number 2" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -15036,7 +15036,7 @@
 				)
 			)
 		)
-		(property "Part Number" "RT0402FRE0710KL"
+		(property "Part Number" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -15075,7 +15075,7 @@
 				)
 			)
 		)
-		(property "Part Number 2" "RT0402DRE0710KL"
+		(property "Part Number 2" ""
 			(at 0 0 0)
 			(unlocked yes)
 			(layer "F.Fab")
