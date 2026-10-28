@@ -8545,26 +8545,6 @@
 				(hide yes)
 			)
 		)
-		(property "Manufacturer" "AVX Corporation"
-			(at 120.65 106.172 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-		(property "Part Number" "0603YC104KAT2A"
-			(at 120.65 104.648 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
 		(property "Display" "0.1uF"
 			(at 112.014 117.602 0)
 			(effects
@@ -8572,15 +8552,6 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
-			)
-		)
-		(property "JLCPCB ID" "C14663"
-			(at 116.84 102.87 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
 			)
 		)
 		(pin "1"
@@ -9867,26 +9838,6 @@
 				(hide yes)
 			)
 		)
-		(property "Manufacturer" "AVX Corporation"
-			(at 127 21.082 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-		(property "Part Number" "0603YC104KAT2A"
-			(at 127 19.558 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
 		(property "Display" "0.1uF"
 			(at 127 31.7435 0)
 			(effects
@@ -9894,15 +9845,6 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
-			)
-		)
-		(property "JLCPCB ID" "C14663"
-			(at 123.19 17.78 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
 			)
 		)
 		(pin "1"
