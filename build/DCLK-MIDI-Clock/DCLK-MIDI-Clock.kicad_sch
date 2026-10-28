@@ -6950,7 +6950,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "10k, 1%, 1/16W, 0603"
+		(property "Description" "33R, 1%, 1/16W, 0603"
 			(at 80.01 109.22 0)
 			(effects
 				(font
@@ -6959,7 +6959,7 @@
 				(hide yes)
 			)
 		)
-		(property "Specifications" "10k, 1%, 1/10W, 0402"
+		(property "Specifications" "33R, 1%, 1/16W, 0603"
 			(at 82.55 101.346 0)
 			(effects
 				(font
@@ -7915,7 +7915,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "10k, 1%, 1/16W, 0603"
+		(property "Description" "330R, 1%, 1/16W, 0603"
 			(at 170.18 102.87 0)
 			(effects
 				(font
@@ -7924,7 +7924,7 @@
 				(hide yes)
 			)
 		)
-		(property "Specifications" "10k, 1%, 1/10W, 0402"
+		(property "Specifications" "330R, 1%, 1/16W, 0603"
 			(at 167.64 110.744 0)
 			(effects
 				(font
@@ -9387,7 +9387,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "10k, 1%, 1/16W, 0603"
+		(property "Description" "4k7, 1%, 1/16W, 0603"
 			(at 121.92 101.6 0)
 			(effects
 				(font
@@ -9396,7 +9396,7 @@
 				(hide yes)
 			)
 		)
-		(property "Specifications" "10k, 1%, 1/10W, 0402"
+		(property "Specifications" "4k7, 1%, 1/16W, 0603"
 			(at 119.38 109.474 0)
 			(effects
 				(font
@@ -9514,7 +9514,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "10k, 1%, 1/16W, 0603"
+		(property "Description" "33R, 1%, 1/16W, 0603"
 			(at 35.56 109.22 0)
 			(effects
 				(font
@@ -9523,7 +9523,7 @@
 				(hide yes)
 			)
 		)
-		(property "Specifications" "10k, 1%, 1/10W, 0402"
+		(property "Specifications" "33R, 1%, 1/16W, 0603"
 			(at 38.1 101.346 0)
 			(effects
 				(font
@@ -10841,7 +10841,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "10k, 1%, 1/16W, 0603"
+		(property "Description" "4k7, 1%, 1/16W, 0603"
 			(at 118.11 101.6 0)
 			(effects
 				(font
@@ -10850,7 +10850,7 @@
 				(hide yes)
 			)
 		)
-		(property "Specifications" "10k, 1%, 1/10W, 0402"
+		(property "Specifications" "4k7, 1%, 1/16W, 0603"
 			(at 115.57 109.474 0)
 			(effects
 				(font
@@ -11231,7 +11231,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "10k, 1%, 1/16W, 0603"
+		(property "Description" "330R, 1%, 1/16W, 0603"
 			(at 182.88 102.87 0)
 			(effects
 				(font
@@ -11240,7 +11240,7 @@
 				(hide yes)
 			)
 		)
-		(property "Specifications" "10k, 1%, 1/10W, 0402"
+		(property "Specifications" "330R, 1%, 1/16W, 0603"
 			(at 180.34 110.744 0)
 			(effects
 				(font
@@ -11649,7 +11649,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "10k, 1%, 1/16W, 0603"
+		(property "Description" "33R, 1%, 1/16W, 0603"
 			(at 83.82 109.22 0)
 			(effects
 				(font
@@ -11658,7 +11658,7 @@
 				(hide yes)
 			)
 		)
-		(property "Specifications" "10k, 1%, 1/10W, 0402"
+		(property "Specifications" "33R, 1%, 1/16W, 0603"
 			(at 86.36 101.346 0)
 			(effects
 				(font
@@ -12355,7 +12355,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "10k, 1%, 1/16W, 0603"
+		(property "Description" "33R, 1%, 1/16W, 0603"
 			(at 39.37 109.22 0)
 			(effects
 				(font
@@ -12364,7 +12364,7 @@
 				(hide yes)
 			)
 		)
-		(property "Specifications" "10k, 1%, 1/10W, 0402"
+		(property "Specifications" "33R, 1%, 1/16W, 0603"
 			(at 41.91 101.346 0)
 			(effects
 				(font
@@ -12836,7 +12836,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "10k, 1%, 1/16W, 0603"
+		(property "Description" "330R, 1%, 1/16W, 0603"
 			(at 161.29 102.87 0)
 			(effects
 				(font
@@ -12845,7 +12845,7 @@
 				(hide yes)
 			)
 		)
-		(property "Specifications" "10k, 1%, 1/10W, 0402"
+		(property "Specifications" "330R, 1%, 1/16W, 0603"
 			(at 158.75 110.744 0)
 			(effects
 				(font
