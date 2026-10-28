@@ -7016,6 +7016,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC Part #" "C23140"
+			(at 80.01 109.22 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "30471a56-4d03-4c7b-8e47-e9a7176aacb9")
 		)
@@ -7158,6 +7167,15 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
+			)
+		)
+		(property "LCSC Part #" "C25530"
+			(at 232.41 57.15 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
 			)
 		)
 		(pin "1"
@@ -7557,6 +7575,15 @@
 				(justify left)
 			)
 		)
+		(property "LCSC Part #" "C11702"
+			(at 265.43 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "5ad1e498-f961-4c58-8370-b1b617c3a1cb")
 		)
@@ -7635,6 +7662,15 @@
 				(justify left)
 			)
 		)
+		(property "LCSC Part #" "C11702"
+			(at 265.43 31.75 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "05ededb0-0c71-4413-8deb-c4d6a23772a0")
 		)
@@ -7697,6 +7733,15 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 135.89 30.48 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C13585"
 			(at 135.89 30.48 0)
 			(effects
 				(font
@@ -7854,6 +7899,15 @@
 				(justify left)
 			)
 		)
+		(property "LCSC Part #" "C25530"
+			(at 232.41 31.75 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "a4837966-d1a0-4218-9b49-c9d0864331b7")
 		)
@@ -7973,6 +8027,15 @@
 			)
 		)
 		(property "Part Number 2" ""
+			(at 170.18 102.87 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C22104"
 			(at 170.18 102.87 0)
 			(effects
 				(font
@@ -8173,6 +8236,15 @@
 			)
 		)
 		(property "Description" "Generic connector, double row, 02x04, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 21.59 153.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C54907661"
 			(at 21.59 153.67 0)
 			(effects
 				(font
@@ -8465,6 +8537,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC Part #" "C1846"
+			(at 154.94 58.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "f03fa532-2bac-4766-9f98-8b04c3030807")
 		)
@@ -8552,6 +8633,15 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
+			)
+		)
+		(property "LCSC Part #" "C24497"
+			(at 118.11 115.57 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
 			)
 		)
 		(pin "1"
@@ -8769,6 +8859,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC Part #" "C1846"
+			(at 106.68 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "949e89b0-4999-42fa-8998-251507122826")
 		)
@@ -8918,6 +9017,15 @@
 				(justify left)
 			)
 		)
+		(property "LCSC Part #" "C11702"
+			(at 265.43 44.45 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "84eacdc1-07ec-4e5a-be88-3f66fff90d17")
 		)
@@ -9061,6 +9169,15 @@
 				(justify left)
 			)
 		)
+		(property "LCSC Part #" "C25530"
+			(at 232.41 44.45 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "9e863ac6-3926-45e0-8599-f23f6f5c8b56")
 		)
@@ -9193,6 +9310,15 @@
 				(font
 					(size 1.27 1.27)
 				)
+			)
+		)
+		(property "LCSC Part #" "C155176"
+			(at 251.46 45.72 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
 			)
 		)
 		(pin "1"
@@ -9424,6 +9550,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC Part #" "C23162"
+			(at 121.92 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "0c41a287-3e3a-4493-8085-a94d838852e8")
 		)
@@ -9543,6 +9678,15 @@
 			)
 		)
 		(property "Part Number 2" ""
+			(at 35.56 109.22 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C23140"
 			(at 35.56 109.22 0)
 			(effects
 				(font
@@ -9679,6 +9823,15 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 110.49 74.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C1846"
 			(at 110.49 74.93 0)
 			(effects
 				(font
@@ -9845,6 +9998,15 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
+			)
+		)
+		(property "LCSC Part #" "C24497"
+			(at 124.46 30.48 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
 			)
 		)
 		(pin "1"
@@ -10849,6 +11011,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC Part #" "C23162"
+			(at 118.11 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "f46138cf-43f8-4f43-9a65-9a10fa7b40fe")
 		)
@@ -11239,6 +11410,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC Part #" "C22104"
+			(at 182.88 102.87 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "3204d6fc-1adf-474e-91e8-d8d7b21919c1")
 		)
@@ -11451,6 +11631,15 @@
 				(justify left)
 			)
 		)
+		(property "LCSC Part #" "C25530"
+			(at 232.41 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "3605f1e3-150a-451b-a134-d2ea9b3326bd")
 		)
@@ -11527,6 +11716,15 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
+			)
+		)
+		(property "LCSC Part #" "C11702"
+			(at 265.43 57.15 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
 			)
 		)
 		(pin "1"
@@ -11649,6 +11847,15 @@
 			)
 		)
 		(property "Part Number 2" ""
+			(at 83.82 109.22 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C23140"
 			(at 83.82 109.22 0)
 			(effects
 				(font
@@ -11789,6 +11996,15 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 190.5 29.21 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C13585"
 			(at 190.5 29.21 0)
 			(effects
 				(font
@@ -11941,6 +12157,15 @@
 				(justify left)
 			)
 		)
+		(property "LCSC Part #" "C24497"
+			(at 271.78 22.86 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "86a68276-0dcf-46cf-b3e5-c638c3679eb0")
 		)
@@ -12003,6 +12228,15 @@
 			)
 		)
 		(property "Description" "6-Channel Capacitive Touch Sensor, SOIC-14"
+			(at 184.15 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C2652106"
 			(at 184.15 68.58 0)
 			(effects
 				(font
@@ -12165,6 +12399,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC Part #" "C15401"
+			(at 200.66 74.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "cf654c04-83b1-42cf-98d4-addd79bde690")
 		)
@@ -12227,6 +12470,15 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 177.8 29.21 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C24497"
 			(at 177.8 29.21 0)
 			(effects
 				(font
@@ -12363,6 +12615,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC Part #" "C23140"
+			(at 39.37 109.22 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "29f00a3e-3f74-48b2-a0dc-d2baf6e00b2a")
 		)
@@ -12424,6 +12685,15 @@
 			)
 		)
 		(property "Description" "Generic connector, double row, 02x04, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 38.1 153.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C41397153"
 			(at 38.1 153.67 0)
 			(effects
 				(font
@@ -12574,6 +12844,15 @@
 			)
 		)
 		(property "Description" "DO-35 Schottky diode, 30V, 200mA, Alternate KiCAD Library"
+			(at 146.05 26.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C19167"
 			(at 146.05 26.67 0)
 			(effects
 				(font
@@ -12836,6 +13115,15 @@
 			)
 		)
 		(property "Part Number 2" ""
+			(at 161.29 102.87 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C22104"
 			(at 161.29 102.87 0)
 			(effects
 				(font
