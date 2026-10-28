@@ -8498,7 +8498,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "100nF_0603_16V"
+		(property "Value" "100nF"
 			(at 118.11 119.38 0)
 			(effects
 				(font
@@ -9820,7 +9820,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "100nF_0603_16V"
+		(property "Value" "100nF"
 			(at 124.46 34.29 0)
 			(effects
 				(font
@@ -11964,7 +11964,7 @@
 				(hide yes)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_1206_3216Metric"
 			(at 271.78 22.86 0)
 			(effects
 				(font

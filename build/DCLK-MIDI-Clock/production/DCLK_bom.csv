@@ -1,9 +1,7 @@
 ﻿Designator,Footprint,Quantity,Value,LCSC Part #
 "_12, _11, _10, _9, _8, _7, _6, _5, _4, _3, _2, ",,12,,
-"C1, C6",1206,2,100nF_0603_16V,
-C10,0603,1,100nF,
+"C1, C10, C3, C6",1206,4,100nF,
 "C2, C4",1206,2,10uF,
-C3,1206,1,100nF,
 C5,CP_Radial_D4.0mm_P1.50mm,1,100uF,
 "C7, C8, C9",1206,3,10nF,
 D1,D_SOD-123,1,BAT43,
