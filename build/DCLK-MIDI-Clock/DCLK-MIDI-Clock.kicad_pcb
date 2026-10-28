@@ -6619,7 +6619,7 @@
 				)
 			)
 		)
-		(property "Value" "100nF_0603_16V"
+		(property "Value" "100nF"
 			(at 0 1.850001 0)
 			(layer "F.Fab")
 			(uuid "903c7375-2e81-4069-a902-5b4769258d71")
@@ -15210,7 +15210,7 @@
 				)
 			)
 		)
-		(property "Value" "100nF_0603_16V"
+		(property "Value" "100nF"
 			(at 0 1.85 0)
 			(layer "F.Fab")
 			(uuid "4d0bfce2-3e34-4330-ba4f-eef1ddb50631")
