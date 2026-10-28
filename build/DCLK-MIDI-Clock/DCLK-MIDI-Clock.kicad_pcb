@@ -19415,7 +19415,7 @@
 		(uuid "f9d52396-ef48-486f-b95b-a49f9640ad33")
 		(at 109.5024 48.7698 -90)
 		(property "Reference" "SSD1306"
-			(at -1 -12 -90)
+			(at -1 -12 270)
 			(unlocked yes)
 			(layer "F.SilkS")
 			(uuid "d4ffb9ec-01b5-4e76-b2a4-2b57f1ef84f6")
@@ -19427,7 +19427,7 @@
 			)
 		)
 		(property "Value" "~"
-			(at -1 -10.5 -90)
+			(at -1 -10.5 270)
 			(unlocked yes)
 			(layer "F.Fab")
 			(uuid "756fd840-c484-4d69-a173-9571b400c054")
@@ -19439,7 +19439,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 0 0 -90)
+			(at 0 0 270)
 			(unlocked yes)
 			(layer "F.Fab")
 			(hide yes)
@@ -19452,7 +19452,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 0 0 -90)
+			(at 0 0 270)
 			(unlocked yes)
 			(layer "F.Fab")
 			(hide yes)
@@ -19481,7 +19481,7 @@
 			(uuid "d412c934-94f1-47de-84fd-af46ca32c637")
 		)
 		(fp_text user "${REFERENCE}"
-			(at -1 -9 -90)
+			(at -1 -9 270)
 			(unlocked yes)
 			(layer "F.Fab")
 			(uuid "9427d3a0-c4d4-4bc2-a657-6a1325797277")
