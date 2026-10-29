@@ -9,7 +9,7 @@ be dropped in and out of a jam on the bar.
 
 ## Update the firmware
 
-### ➜ [DCLK Web Flasher](https://joebmz98.github.io/DCLK-Flasher/)
+### ➜ [DCLK Web Flasher & Editor](https://joebmz98.github.io/DCLK-Flasher/)
 
 Flash the latest release straight from Chrome or Edge on a computer. No
 software to install. Your saved settings are kept. Flasher source:
