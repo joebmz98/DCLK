@@ -4014,7 +4014,7 @@
 	)
 	(text "SYNC OUTS: 5V, tip = clock pulse, ring = run gate (high while channel plays)\nSYNC1/RUN1 follow CH1, SYNC2/RUN2 follow CH2. 1k series = short-proof for TS plugs"
 		(exclude_from_sim no)
-		(at 214.63 170.18 0)
+		(at 197.358 124.714 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -4167,7 +4167,7 @@
 		)
 		(uuid "ffef09f2-db95-4e41-a6f5-4239f78a2d4f")
 	)
-	(text_box "Fonts needed for PCB:\n- Alagard\n- Bahnschrift"
+	(text_box "Fonts needed for PCB:\n- Alagard"
 		(exclude_from_sim no)
 		(at 130.81 186.69 0)
 		(size 43.18 8.89)
