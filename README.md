@@ -2,7 +2,7 @@
 
 ![DCLK](assets/Images/EDITS/DCLK_6.JPG)
 
-**.axs instruments** · Firmware v1.0 · Hardware v1.0
+**.axs instruments** · Firmware v1.4 · Hardware v1.0
 
 DCLK is a dual MIDI clock built around an STM32F411 Black Pill. It sends
 MIDI clock to two TRS (Type A) outputs and over USB MIDI, with quantised
