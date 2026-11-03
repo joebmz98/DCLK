@@ -1,0 +1,19 @@
+{
+  "source": {
+    "kind": "all"
+  },
+  "browse": null,
+  "library_folder": null,
+  "sort": {
+    "key": "captureDate",
+    "ascending": false,
+    "group": "auto",
+    "seed": 0
+  },
+  "selection": {
+    "ids": [
+      5
+    ],
+    "active": 5
+  }
+}

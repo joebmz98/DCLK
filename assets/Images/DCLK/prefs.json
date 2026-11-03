@@ -1,0 +1,203 @@
+{
+  "xmp": {
+    "autoWrite": false,
+    "naming": "stem"
+  },
+  "lastExport": {
+    "addToPhotos": false,
+    "background": true,
+    "colorSpace": "srgb",
+    "conflict": "unique",
+    "destinationMode": "specificFolder",
+    "dir": "/Users/joe/Desktop/Projects/DCLK/assets/Images/EDITS",
+    "dngCompression": "lossless",
+    "format": "original",
+    "hdr": false,
+    "hdrTransfer": "pq",
+    "jxlEffort": "normal",
+    "jxlLossless": false,
+    "jxlProgressive": false,
+    "longEdge": 0,
+    "metadata": "all",
+    "naming": "DCLK_6",
+    "photosAlbum": "",
+    "ppi": 240,
+    "quality": 90,
+    "removeLocation": false,
+    "sharpen": "none",
+    "sharpenAmount": "standard",
+    "startNumber": 1,
+    "subfolder": "",
+    "tiffCompression": "Deflate"
+  },
+  "lastMerge": {},
+  "exportPresets": [],
+  "printTemplates": [],
+  "metadataPresets": [],
+  "filterPresets": [],
+  "curvePresets": [],
+  "maskEffects": [],
+  "maskToolEffects": {},
+  "labelSets": [],
+  "lutProfiles": [],
+  "keywordSets": [],
+  "keywordSet": null,
+  "recentKeywords": [],
+  "import": {
+    "rawPreset": null,
+    "perCamera": false,
+    "cameras": [],
+    "otherPreset": null,
+    "copyright": "",
+    "creator": "",
+    "metadataPreset": null,
+    "autoFolder": null,
+    "autoCopy": false,
+    "autoAlbum": null,
+    "showOnCard": false
+  },
+  "cacheMb": 0,
+  "smartPreviewsDir": null,
+  "forgetLocalDays": 30,
+  "slideshow": {
+    "slideDuration": 4.0,
+    "fadeDuration": 1.0,
+    "fadeColor": null,
+    "randomOrder": false,
+    "repeat": true,
+    "preparePreviews": true,
+    "manual": false
+  },
+  "slideLayout": {
+    "marginLeft": 0.0,
+    "marginRight": 0.0,
+    "marginTop": 0.0,
+    "marginBottom": 0.0,
+    "linkMargins": true,
+    "showGuides": true,
+    "aspect": "screen",
+    "zoomToFill": false,
+    "strokeBorder": false,
+    "strokeColor": [
+      255,
+      255,
+      255
+    ],
+    "strokeWidth": 0.004,
+    "castShadow": false,
+    "shadowOpacity": 0.4,
+    "shadowOffset": 0.012,
+    "shadowRadius": 0.02,
+    "shadowAngle": -45.0,
+    "backdropColor": [
+      0,
+      0,
+      0
+    ],
+    "colorWash": false,
+    "washColor": [
+      96,
+      96,
+      96
+    ],
+    "washOpacity": 0.6,
+    "washAngle": 90.0,
+    "backgroundImage": null,
+    "backgroundOpacity": 0.5
+  },
+  "slideOverlays": {
+    "identityPlate": {
+      "enabled": false,
+      "text": "LightCraft",
+      "image": "",
+      "size": 0.05,
+      "color": [
+        255,
+        255,
+        255
+      ],
+      "opacity": 0.8,
+      "place": {
+        "anchor": "topLeft",
+        "offsetX": 0.03,
+        "offsetY": 0.03,
+        "relativeTo": "slide"
+      },
+      "behind": false
+    },
+    "ratingStars": {
+      "enabled": false,
+      "color": [
+        235,
+        235,
+        235
+      ],
+      "size": 0.03,
+      "place": {
+        "anchor": "topRight",
+        "offsetX": -0.015,
+        "offsetY": 0.015,
+        "relativeTo": "photo"
+      }
+    },
+    "texts": [],
+    "showWatermark": false,
+    "watermark": {
+      "text": "",
+      "vertical": false,
+      "size": 0.035,
+      "opacity": 0.7,
+      "anchor": "bottomRight",
+      "insetX": 0.025,
+      "insetY": 0.025,
+      "rotation": 0,
+      "color": [
+        255,
+        255,
+        255
+      ],
+      "shadow": true,
+      "image": "",
+      "imageWidth": 0.2
+    }
+  },
+  "slideTitles": {
+    "intro": {
+      "enabled": false,
+      "color": [
+        0,
+        0,
+        0
+      ],
+      "content": "identityPlate",
+      "text": "Welcome",
+      "overrideColor": false,
+      "textColor": [
+        255,
+        255,
+        255
+      ],
+      "scale": 0.1,
+      "duration": null
+    },
+    "ending": {
+      "enabled": false,
+      "color": [
+        0,
+        0,
+        0
+      ],
+      "content": "identityPlate",
+      "text": "The End",
+      "overrideColor": false,
+      "textColor": [
+        255,
+        255,
+        255
+      ],
+      "scale": 0.1,
+      "duration": null
+    }
+  },
+  "holdView": false
+}
