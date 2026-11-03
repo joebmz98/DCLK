@@ -87,11 +87,11 @@ GCT DCJ200 DC jack, 3× 5 mm LEDs.
 | Function | Pin |
 | --- | --- |
 | MIDI OUT 1 / 2 (TX) | PA9 (USART1) / PA2 (USART2) |
-| CH1 / CH2 buttons | PB0 / PB1 |
-| Settings button | PB14 |
+| CH1 / CH2 / Settings touch pads | CAP1206 CS1 / CS2 / CS3 (I²C 0x28) |
+| CAP1206 ALERT# | PB12 |
 | Encoder A / B / push | PB4 / PB5 / PB13 |
 | LED CH1 / CH2 / BEAT | PB8 / PB9 / PA6 (PWM) |
-| OLED SDA / SCL | PB7 / PB6 |
+| OLED + CAP1206 SDA / SCL | PB7 / PB6 |
 
 ## Building the firmware
 

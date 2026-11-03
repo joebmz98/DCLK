@@ -1,7 +1,7 @@
 // ********************* //
 // DCLK                  //
 // Dual MIDI Clock       //
-// firmware version 1.3  //
+// firmware version 1.4  //
 // hardware version: 1.0 //
 // powered by STM32 BP   //
 // ********************* //
@@ -19,6 +19,15 @@
 // Board:           "DCLK Dual MIDI Clock" (custom boards.txt entry)
 // USB support:     None
 // U(S)ART support: Enabled (generic 'Serial') - BusIO needs 'Serial' to exist
+// ********************* //
+
+// ********************* //
+// CONTROLS (final PCB)
+//
+// CH1, CH2 and SETTINGS are capacitive touch pads read by a CAP1206
+// (CS1 = CH1, CS2 = CH2, CS3 = SETTINGS) on the same I2C bus as the OLED,
+// with its ALERT# line on PB12. The encoder and its push switch are wired
+// straight to the BlackPill (PB4 / PB5 / PB13).
 // ********************* //
 
 // ********************* //
@@ -56,6 +65,7 @@
 //
 // MONITOR menu: USB / clock diagnostics (default font for legibility).
 //   Encoder button toggles a USB test note (C4, ch 1, once a second).
+//   T:Y means the CAP1206 touch controller answered and is configured.
 //
 // ABOUT menu: product, maker and firmware version (FW_VERSION below).
 // ********************* //
@@ -115,7 +125,7 @@
 #endif
 
 // ---------- Firmware version (shown on the ABOUT screen; keep in sync with the header) ----------
-const char* const FW_VERSION = "1.3";
+const char* const FW_VERSION = "1.4";
 
 // ---------- Config ----------
 constexpr uint8_t  PPQN       = 24;
@@ -135,9 +145,9 @@ constexpr uint8_t N_LED_LEVELS = sizeof(led_levels) / sizeof(led_levels[0]);
 
 // ---------- Pins ----------
 constexpr uint8_t PIN_ENC_A = PB4, PIN_ENC_B = PB5;
-constexpr uint8_t PIN_BTN[2] = { PB0, PB1 };
-constexpr uint8_t PIN_ENC_BTN      = PB13;  // encoder shaft push button
-constexpr uint8_t PIN_BTN_SETTINGS = PB14;  // settings menu button
+constexpr int8_t  ENC_DIR     = -1;         // +1 / -1: flips the encoder's direction everywhere
+constexpr uint8_t PIN_ENC_BTN = PB13;       // encoder shaft push button
+constexpr uint8_t PIN_TOUCH_ALERT = PB12;   // CAP1206 ALERT# (open drain, active low, R10 pull-up)
 
 constexpr uint8_t PIN_LED_BEAT = PA6;                // TIM3_CH1 PWM
 constexpr uint8_t PIN_LED_STATUS[2] = { PB8, PB9 };  // TIM4 PWM
@@ -1033,7 +1043,7 @@ void onEncoder() {
   state = ((state << 2) | (digitalRead(PIN_ENC_A) << 1) | digitalRead(PIN_ENC_B)) & 0x0F;
   acc += table[state];
   if (acc >= 4 || acc <= -4) {
-    encoder_delta += (acc > 0 ? 1 : -1);
+    encoder_delta += (acc > 0 ? ENC_DIR : -ENC_DIR);
     acc = 0;
   }
 }
@@ -1205,50 +1215,121 @@ void onSettingsButton() {
   ui_dirty = true;
 }
 
-void pollSettingsButton() {
-  static uint32_t lastDebounceTime = 0;
-  static bool buttonState = HIGH;
-  static bool lastReading = HIGH;
-
-  bool reading = digitalRead(PIN_BTN_SETTINGS);
-  if (reading != lastReading) {
-    lastDebounceTime = millis();
-  }
-  if ((millis() - lastDebounceTime) > 30) {
-    if (reading != buttonState) {
-      buttonState = reading;
-      if (buttonState == LOW) {
-        onSettingsButton();
-      }
-    }
-  }
-  lastReading = reading;
+// Output pads: touch = play / stop (acts immediately, even if the
+// screen is asleep).
+void onOutputButton(uint8_t i) {
+  wakeScreen();
+  if (running[i] || pending[i]) stop_req[i] = true;
+  else                          play_req[i] = true;
 }
 
-// Output buttons: press = play / stop (acts immediately, even if the
-// screen is asleep).
-void pollButtons() {
-  static uint32_t lastDebounceTime[2] = {0, 0};
-  static bool buttonState[2] = {HIGH, HIGH};
-  static bool lastReading[2] = {HIGH, HIGH};
+// ---------- Touch pads (CAP1206) ----------
+// The CAP1206 does its own touch detection and hysteresis, so there's no
+// debounce here: a 0 -> 1 change in its status bits is a press.
+//
+// All I2C traffic happens in loop() context. The OLED shares the bus, but
+// displayService() only ever sends whole transactions, so the two never
+// interleave. Nothing here touches I2C from an ISR (Wire isn't reentrant).
+//
+// ALERT# going low means "something changed": read straight away. A slow
+// poll runs as well, so a held pad is always seen even if an edge is missed.
+constexpr uint8_t  CAP_ADDR           = 0x28;   // fixed SMBus address
+constexpr uint8_t  CAP_PRODUCT_ID     = 0x67;   // CAP1206
+constexpr uint8_t  CAP_REG_MAIN       = 0x00;   // bit 0 = INT, write 0 to clear
+constexpr uint8_t  CAP_REG_STATUS     = 0x03;   // sensor input status, bit n = CS(n+1)
+constexpr uint8_t  CAP_REG_SENS       = 0x1F;   // sensitivity control
+constexpr uint8_t  CAP_REG_INPUT_EN   = 0x21;
+constexpr uint8_t  CAP_REG_CALIBRATE  = 0x26;
+constexpr uint8_t  CAP_REG_INT_EN     = 0x27;
+constexpr uint8_t  CAP_REG_REPEAT_EN  = 0x28;
+constexpr uint8_t  CAP_REG_MULTITOUCH = 0x2A;
+constexpr uint8_t  CAP_REG_PRODUCT    = 0xFD;
 
-  for (int i = 0; i < 2; i++) {
-    bool reading = digitalRead(PIN_BTN[i]);
-    if (reading != lastReading[i]) {
-      lastDebounceTime[i] = millis();
-    }
-    if ((millis() - lastDebounceTime[i]) > 30) {
-      if (reading != buttonState[i]) {
-        buttonState[i] = reading;
-        if (buttonState[i] == LOW) {
-          wakeScreen();
-          if (running[i] || pending[i]) stop_req[i] = true;
-          else                          play_req[i] = true;
-        }
-      }
-    }
-    lastReading[i] = reading;
+constexpr uint8_t  TOUCH_CH1      = 0x01;       // CS1
+constexpr uint8_t  TOUCH_CH2      = 0x02;       // CS2
+constexpr uint8_t  TOUCH_SETTINGS = 0x04;       // CS3
+constexpr uint8_t  TOUCH_MASK     = TOUCH_CH1 | TOUCH_CH2 | TOUCH_SETTINGS;
+
+// Sensitivity: bits 6:4 = DELTA_SENSE, 000 = 128x (most sensitive) ...
+// 111 = 1x (least). 0x2F is the chip default (32x). Lower bits 6:4 if the
+// pads feel dead through the panel, raise them if they trigger on their own.
+constexpr uint8_t  CAP_SENSITIVITY = 0x2F;
+
+constexpr uint32_t TOUCH_POLL_MS  = 20;         // backup poll when ALERT# is idle
+constexpr uint32_t TOUCH_RETRY_MS = 1000;       // retry init if the chip doesn't answer
+
+bool touch_ok = false;                           // shown on the MONITOR screen
+
+bool capWrite(uint8_t reg, uint8_t v) {
+  Wire.beginTransmission(CAP_ADDR);
+  Wire.write(reg);
+  Wire.write(v);
+  return Wire.endTransmission() == 0;
+}
+
+bool capRead(uint8_t reg, uint8_t& v) {
+  Wire.beginTransmission(CAP_ADDR);
+  Wire.write(reg);
+  if (Wire.endTransmission(false) != 0) return false;   // repeated start
+  if (Wire.requestFrom(CAP_ADDR, (uint8_t)1) != 1) return false;
+  v = Wire.read();
+  return true;
+}
+
+bool capInit() {
+  uint8_t id;
+  if (!capRead(CAP_REG_PRODUCT, id) || id != CAP_PRODUCT_ID) return false;
+  return capWrite(CAP_REG_INPUT_EN,   TOUCH_MASK)        // CS4-6 aren't connected
+      && capWrite(CAP_REG_INT_EN,     TOUCH_MASK)
+      && capWrite(CAP_REG_REPEAT_EN,  0x00)              // no auto-repeat while held
+      && capWrite(CAP_REG_MULTITOUCH, 0x00)              // allow CH1 + CH2 together
+      && capWrite(CAP_REG_SENS,       CAP_SENSITIVITY)
+      && capWrite(CAP_REG_CALIBRATE,  TOUCH_MASK)        // recalibrate the pads in use
+      && capWrite(CAP_REG_MAIN,       0x00);             // clear any pending INT
+}
+
+void touchService() {
+  static uint8_t  prev       = 0;
+  static uint32_t last_poll  = 0;
+  static uint32_t last_retry = 0;
+  const uint32_t now = millis();
+
+  if (!touch_ok) {
+    if (now - last_retry < TOUCH_RETRY_MS) return;
+    last_retry = now;
+    touch_ok = capInit();
+    prev = 0;
+    if (screen == Screen::DIAG) ui_dirty = true;
+    return;
   }
+
+  // ALERT# low = INT set. Rate-limited so a stuck line can't hog the bus.
+  const bool alert = (digitalRead(PIN_TOUCH_ALERT) == LOW);
+  if (now - last_poll < (alert ? 2UL : TOUCH_POLL_MS)) return;
+  last_poll = now;
+
+  // Status bits latch until INT is cleared, so read first to catch a quick
+  // tap that's already been released. Then clear INT and read again: the
+  // second read is what's being touched right now.
+  uint8_t latched, current;
+  bool ok = capRead(CAP_REG_STATUS, latched);
+  current = latched;
+  // (Also done when a bit is set without ALERT#, so a missed edge can't
+  // leave a bit latched on.)
+  if (ok && (alert || latched)) ok = capWrite(CAP_REG_MAIN, 0x00) && capRead(CAP_REG_STATUS, current);
+  if (!ok) {                       // chip gone quiet: re-init on the retry timer
+    touch_ok = false;
+    last_retry = now;
+    if (screen == Screen::DIAG) ui_dirty = true;
+    return;
+  }
+
+  const uint8_t pressed = latched & TOUCH_MASK & ~prev;
+  prev = current & TOUCH_MASK;
+
+  if (pressed & TOUCH_CH1)      onOutputButton(0);
+  if (pressed & TOUCH_CH2)      onOutputButton(1);
+  if (pressed & TOUCH_SETTINGS) onSettingsButton();
 }
 
 // ---------- Status LEDs ----------
@@ -1437,8 +1518,9 @@ void drawUI() {
     }
 
     // ---------- MONITOR (USB diagnostics, default 6x8 font) ----------
-    // HOST = host has configured the device, LINK = bus active (not
-    // suspended), MIDI = MIDI interface open. CLK = USB transport state.
+    // HST = host has configured the device, LNK = bus active (not
+    // suspended), MID = MIDI interface open, T = CAP1206 touch controller
+    // found and configured. CLK = USB transport state.
     // HSE/HSI = clock source; SYS / USB in MHz (USB must read 48.0).
     // TX = packets sent, FULL = USB buffer full (retried), DROP = lost.
     case Screen::DIAG: {
@@ -1449,10 +1531,11 @@ void drawUI() {
       display.setFont();          // built-in 5x7 font
       display.setTextSize(1);
 
-      snprintf(line, sizeof(line), "HOST:%c LINK:%c MIDI:%c",
+      snprintf(line, sizeof(line), "HST:%c LNK:%c MID:%c T:%c",   // 21 chars = full width
                TinyUSBDevice.mounted() ? 'Y' : 'N',
                tud_ready() ? 'Y' : 'N',
-               tud_midi_mounted() ? 'Y' : 'N');
+               tud_midi_mounted() ? 'Y' : 'N',
+               touch_ok ? 'Y' : 'N');
       display.setCursor(0, 0);   display.print(line);
 
       snprintf(line, sizeof(line), "%s SYS:%lu USB:%lu.%lu",
@@ -1621,10 +1704,8 @@ void setup() {
 
   pinMode(PIN_ENC_A, INPUT_PULLUP);
   pinMode(PIN_ENC_B, INPUT_PULLUP);
-  pinMode(PIN_BTN[0], INPUT_PULLUP);
-  pinMode(PIN_BTN[1], INPUT_PULLUP);
   pinMode(PIN_ENC_BTN, INPUT_PULLUP);
-  pinMode(PIN_BTN_SETTINGS, INPUT_PULLUP);
+  pinMode(PIN_TOUCH_ALERT, INPUT_PULLUP);   // R10 pulls it up too
   attachInterrupt(PIN_ENC_A, onEncoder, CHANGE);
   attachInterrupt(PIN_ENC_B, onEncoder, CHANGE);
 
@@ -1642,6 +1723,7 @@ void setup() {
   Wire.setClock(400000);
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.setRotation(DISPLAY_ROTATION);   // applies to every screen, incl. boot animation
+  touch_ok = capInit();                    // pads are calibrated while the boot animation runs
 
   bootAnimation();
 
@@ -1668,9 +1750,8 @@ void loop() {
   processUSB_TestNote();
   extService();
 
-  pollButtons();
+  touchService();
   pollEncoderButton();
-  pollSettingsButton();
   processEncoder();
   updateStatusLeds();
   processScreenSaver();
