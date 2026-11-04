@@ -1,7 +1,7 @@
 // ********************* //
 // DCLK                  //
 // Dual MIDI Clock       //
-// firmware version 1.5  //
+// firmware version 1.6  //
 // hardware version: 1.0 //
 // powered by STM32 BP   //
 // ********************* //
@@ -28,6 +28,13 @@
 // (CS1 = CH1, CS2 = CH2, CS3 = SETTINGS) on the same I2C bus as the OLED,
 // with its ALERT# line on PB12. The encoder and its push switch are wired
 // straight to the BlackPill (PB4 / PB5 / PB13).
+//
+// SYNC OUTPUTS (v1.6+): two 3.5 mm TRS jacks, buffered to 5 V by a 74AHCT125.
+//   Tip  = clock pulse, SYNC_PPQN pulses per quarter note (after the
+//          channel's clock divider), SYNC_PULSE_US wide
+//   Ring = run gate, high while that channel is playing
+//   SYNC 1 follows CH1 (PA8 tip, PB15 ring), SYNC 2 follows CH2 (PA5 tip,
+//   PA4 ring). Pulse ends are timed by TIM5.
 // ********************* //
 
 // ********************* //
@@ -135,7 +142,7 @@
 #endif
 
 // ---------- Firmware version (shown on the ABOUT screen; keep in sync with the header) ----------
-const char* const FW_VERSION = "1.5";
+const char* const FW_VERSION = "1.6";
 
 // ---------- Config ----------
 constexpr uint8_t  PPQN       = 24;
@@ -169,6 +176,17 @@ HardwareSerial* midi[2] = { &MidiOut1, &MidiOut2 };
 Adafruit_SSD1306 display(128, 32, &Wire, -1);
 constexpr uint8_t DISPLAY_ROTATION = 2;   // 0 = normal, 2 = rotated 180 degrees
 HardwareTimer* tickTimer = new HardwareTimer(TIM2);
+
+// ---------- Analogue sync outputs ----------
+// 3.3 V logic into the 74AHCT125 (U3), which drives the jacks at 5 V.
+// R11-R14 (100k) hold the buffer inputs low until these pins are set up.
+constexpr PinName SYNC_PIN[2] = { PA_8,  PA_5 };   // tip: clock pulse
+constexpr PinName RUN_PIN[2]  = { PB_15, PA_4 };   // ring: run gate
+constexpr uint8_t  SYNC_PPQN     = 2;       // 2 = Volca / Pocket Operator; 4 = 16ths; 24 = DIN-sync rate
+constexpr uint32_t SYNC_PULSE_US = 10000;   // pulse width, capped at half the pulse spacing
+HardwareTimer* syncTimer = new HardwareTimer(TIM5);   // ends the pulses
+volatile bool     sync_high[2]   = { false, false };
+volatile uint32_t sync_off_us[2] = { 0, 0 };
 
 // ---------- USB MIDI ----------
 Adafruit_USBD_MIDI usb_midi;
@@ -394,6 +412,39 @@ void stopOutput(uint8_t i) {
   ui_dirty = true;
 }
 
+// ---------- Sync output helpers ----------
+// Run gates mirror running[]. Called at the end of every tick and from
+// loop(), so stops that happen outside a tick (host stop, clock source
+// change, DFU) also drop the gate.
+inline void syncUpdateRun() {
+  for (int i = 0; i < 2; i++) digitalWriteFast(RUN_PIN[i], running[i] ? HIGH : LOW);
+}
+
+// Start a clock pulse on one jack; TIM5 (syncService) ends it.
+inline void syncPulse(uint8_t i, uint32_t width_us) {
+  sync_off_us[i] = micros() + width_us;
+  sync_high[i]   = true;
+  digitalWriteFast(SYNC_PIN[i], HIGH);
+}
+
+// TIM5, every 250 us: end pulses whose time is up
+void syncService() {
+  const uint32_t now = micros();
+  for (int i = 0; i < 2; i++) {
+    if (sync_high[i] && (int32_t)(now - sync_off_us[i]) >= 0) {
+      digitalWriteFast(SYNC_PIN[i], LOW);
+      sync_high[i] = false;
+    }
+  }
+}
+
+// Microseconds per 24 PPQN tick at the current tempo (internal or measured)
+inline uint32_t tickPeriodUs() {
+  uint32_t bpm_x10 = extMode() ? (ext_bpm_x10 ? ext_bpm_x10 : (uint32_t)BPM_MAX * 10)
+                               : (uint32_t)bpm * 10;
+  return 600000000UL / (bpm_x10 * PPQN);
+}
+
 // Play / stop requests that don't need a clock tick. In USB mode with the
 // host stopped no ticks arrive, so loop() calls this directly to arm and
 // disarm outputs. Only ever called from the context that runs processTick().
@@ -498,6 +549,20 @@ void processTick() {
     if (clk[i]) sendMIDIByte(i, 0xF8);
   }
   if (clk[u] && !ext) usb_tx_enqueue(0xF8);   // USB mirrors the selected output, divider included
+
+  // 5b. Analogue sync: SYNC_PPQN pulses per beat of the divided clock
+  {
+    const uint32_t tick_us = tickPeriodUs();
+    for (int i = 0; i < 2; i++) {
+      const uint32_t every = (uint32_t)(PPQN / SYNC_PPQN) * clk_div[i];   // ticks between pulses
+      if (running[i] && (out_tick[i] % every == 0)) {
+        uint32_t width = (tick_us * every) / 2;          // never more than 50% duty
+        if (width > SYNC_PULSE_US) width = SYNC_PULSE_US;
+        syncPulse(i, width);
+      }
+    }
+    syncUpdateRun();
+  }
 
   // 6. Advance counters
   for (int i = 0; i < 2; i++) if (running[i]) out_tick[i]++;
@@ -1750,6 +1815,11 @@ void saveSettings() {
 void enterDfu() {
   tickTimer->pause();
   stopAll();                                         // MIDI Stop on DIN + USB
+  syncTimer->pause();
+  for (int i = 0; i < 2; i++) {                      // sync jacks low
+    digitalWriteFast(SYNC_PIN[i], LOW);
+    digitalWriteFast(RUN_PIN[i],  LOW);
+  }
 
   // Send the Stop bytes and any SysEx reply, finish the screen flush
   uint32_t t0 = millis();
@@ -1849,6 +1919,13 @@ void setup() {
   attachInterrupt(PIN_ENC_A, onEncoder, CHANGE);
   attachInterrupt(PIN_ENC_B, onEncoder, CHANGE);
 
+  for (int i = 0; i < 2; i++) {               // sync jacks: low until a channel plays
+    pinMode(pinNametoDigitalPin(SYNC_PIN[i]), OUTPUT);
+    pinMode(pinNametoDigitalPin(RUN_PIN[i]),  OUTPUT);
+    digitalWriteFast(SYNC_PIN[i], LOW);
+    digitalWriteFast(RUN_PIN[i],  LOW);
+  }
+
   pinMode(PIN_LED_BEAT, OUTPUT);
   pinMode(PIN_LED_STATUS[0], OUTPUT);
   pinMode(PIN_LED_STATUS[1], OUTPUT);
@@ -1876,6 +1953,11 @@ void setup() {
 
   last_activity = millis();
 
+  syncTimer->setOverflow(250, MICROSEC_FORMAT);   // pulse-end resolution
+  syncTimer->setInterruptPriority(1, 0);          // below the tick ISR
+  syncTimer->attachInterrupt(syncService);
+  syncTimer->resume();
+
   applyTempo();
   tickTimer->setInterruptPriority(0, 0);
   tickTimer->attachInterrupt(onTick);
@@ -1889,6 +1971,7 @@ void loop() {
   processUSB_TX();
   processUSB_TestNote();
   extService();
+  syncUpdateRun();       // catches stops made outside a tick
 
   touchService();
   pollEncoderButton();
