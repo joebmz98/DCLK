@@ -1,7 +1,7 @@
 // ********************* //
 // DCLK                  //
 // Dual MIDI Clock       //
-// firmware version 1.6  //
+// firmware version 1.6.1//
 // hardware version: 1.0 //
 // powered by STM32 BP   //
 // ********************* //
@@ -30,7 +30,7 @@
 // straight to the BlackPill (PB4 / PB5 / PB13).
 //
 // SYNC OUTPUTS (v1.6+): two 3.5 mm TRS jacks, buffered to 5 V by a 74AHCT125.
-//   Tip  = clock pulse, SYNC_PPQN pulses per quarter note (after the
+//   Tip  = clock pulse, SYNC n PPQN setting per quarter note (after the
 //          channel's clock divider), SYNC_PULSE_US wide
 //   Ring = run gate, high while that channel is playing
 //   SYNC 1 follows CH1 (PA8 tip, PB15 ring), SYNC 2 follows CH2 (PA5 tip,
@@ -63,6 +63,12 @@
 // Clock, Start and Stop are MIDI System Real-Time messages: they carry no
 // MIDI channel and every device on the cable receives them. "CH1"/"CH2"
 // here mean the two output jacks, not MIDI channels.
+//
+// SYNC menu (v1.6.1+):
+//   SYNC 1    - pulses per quarter note on the SYNC 1 tip: 1 / 2 / 4 / 8 /
+//               12 / 24 (default 24). 24 = DIN-sync rate, 4 = 16ths,
+//               2 = Volca / Pocket Operator, 1 = quarter notes.
+//   SYNC 2    - same for SYNC 2
 //
 // SCREEN menu:
 //   SAVER     - after OFF/1/5/10/30 min without input the OLED dims if a
@@ -100,6 +106,9 @@
 //                       the clocks, saves settings and restarts into the
 //                       STM32 ROM DFU bootloader for the web flasher
 // Values are 14-bit: lo = v & 0x7F, hi = v >> 7. Param ids: PARAM_* below.
+// The STATE reply carries PARAM_COUNT params, then status bytes; from
+// v1.6.1 two more bytes (SYNC 1 / SYNC 2 PPQN) follow before F7, and SET
+// takes PARAM_SYNC1 / PARAM_SYNC2. Older editors ignore the extra bytes.
 // Changes are saved to flash with the usual rule (once all clocks stop).
 // ********************* //
 
@@ -142,7 +151,7 @@
 #endif
 
 // ---------- Firmware version (shown on the ABOUT screen; keep in sync with the header) ----------
-const char* const FW_VERSION = "1.6";
+const char* const FW_VERSION = "1.6.1";
 
 // ---------- Config ----------
 constexpr uint8_t  PPQN       = 24;
@@ -182,7 +191,6 @@ HardwareTimer* tickTimer = new HardwareTimer(TIM2);
 // R11-R14 (100k) hold the buffer inputs low until these pins are set up.
 constexpr PinName SYNC_PIN[2] = { PA_8,  PA_5 };   // tip: clock pulse
 constexpr PinName RUN_PIN[2]  = { PB_15, PA_4 };   // ring: run gate
-constexpr uint8_t  SYNC_PPQN     = 2;       // 2 = Volca / Pocket Operator; 4 = 16ths; 24 = DIN-sync rate
 constexpr uint32_t SYNC_PULSE_US = 10000;   // pulse width, capped at half the pulse spacing
 HardwareTimer* syncTimer = new HardwareTimer(TIM5);   // ends the pulses
 volatile bool     sync_high[2]   = { false, false };
@@ -231,6 +239,9 @@ enum Param : uint8_t {
   PARAM_BPM, PARAM_CLK_SRC, PARAM_WAIT, PARAM_STOPQ, PARAM_DIV1, PARAM_DIV2,
   PARAM_USB_OUT, PARAM_LED, PARAM_SAVER, PARAM_EXT_TPT, PARAM_COUNT
 };
+// v1.6.1: set-only ids; their values ride at the end of the STATE reply
+constexpr uint8_t PARAM_SYNC1 = PARAM_COUNT;       // 10
+constexpr uint8_t PARAM_SYNC2 = PARAM_COUNT + 1;   // 11
 
 // Outgoing SysEx is queued as ready-made 4-byte USB-MIDI packets (loop
 // context only) and sent after any pending clock bytes.
@@ -249,9 +260,12 @@ bool    sx_rx_ovf   = false;
 constexpr uint8_t wait_options[]  = {1, 2, 4, 8, 16};
 constexpr uint8_t div_options[]   = {1, 2, 3, 4, 6, 8};   // all divide 96 (one bar)
 constexpr uint8_t saver_options[] = {0, 1, 5, 10, 30};    // minutes, 0 = off
+constexpr uint8_t sync_options[]  = {1, 2, 4, 8, 12, 24}; // sync PPQN, all divide 24
+constexpr uint8_t SYNC_PPQN_DEFAULT = 24;
 constexpr uint8_t N_WAIT  = sizeof(wait_options);
 constexpr uint8_t N_DIV   = sizeof(div_options);
 constexpr uint8_t N_SAVER = sizeof(saver_options);
+constexpr uint8_t N_SYNC  = sizeof(sync_options);
 
 // ---------- Persistent settings (emulated EEPROM in flash) ----------
 // BPM sits after 'magic' so settings saved by older firmware stay valid
@@ -268,6 +282,7 @@ struct PersistedSettings {
   uint8_t bpm_hi;
   uint8_t clk_src;     // v1.3+: erased (0xFF) on older saves -> INT
   uint8_t ext_tpt;     // v1.3+: erased -> HOST
+  uint8_t sync_ppqn[2];  // v1.6.1+: erased -> 24
 };
 
 constexpr uint16_t EEPROM_SETTINGS_ADDR = 0;
@@ -295,6 +310,7 @@ volatile uint8_t wait_bars  = 4;
 volatile uint8_t clk_div[2] = { 1, 1 };
 volatile bool    stop_quant = false;
 uint8_t          saver_idx  = 2;       // 5 min
+volatile uint8_t sync_ppqn[2] = { SYNC_PPQN_DEFAULT, SYNC_PPQN_DEFAULT };
 
 // USB routing. usb_out_channel is only ever changed inside the tick ISR;
 // the UI posts a request via usb_out_req so Stop/Start can be sent cleanly.
@@ -333,6 +349,7 @@ enum class Screen : uint8_t {
   MAIN, SETTINGS,
   LED_VIEW, LED_EDIT,
   MIDI_VIEW, MIDI_EDIT,
+  SYNC_VIEW, SYNC_EDIT,
   SAVER_EDIT,
   DIAG,                        // MONITOR: USB diagnostics
   UPDATE_CONFIRM,              // UPDATE: confirm restart into DFU
@@ -341,12 +358,13 @@ enum class Screen : uint8_t {
 Screen  screen        = Screen::MAIN;
 uint8_t menu_sel      = 0;     // SETTINGS: 0=LEDS 1=MIDI 2=SCREEN
 uint8_t midi_menu_sel = 0;
+uint8_t sync_menu_sel = 0;     // SYNC: 0 = SYNC 1, 1 = SYNC 2
 uint8_t edit_idx      = 0;     // option index being edited (MIDI_EDIT / SAVER_EDIT)
 uint8_t led_edit_orig = 0;     // LED level to restore on cancel
 
-constexpr uint8_t N_SETTINGS = 6;
-const char* const settings_labels[N_SETTINGS] = { "LEDS", "MIDI", "SCREEN", "MONITOR", "UPDATE", "ABOUT" };
-enum SettingsItem : uint8_t { SI_LEDS, SI_MIDI, SI_SCREEN, SI_MONITOR, SI_UPDATE, SI_ABOUT };
+constexpr uint8_t N_SETTINGS = 7;
+const char* const settings_labels[N_SETTINGS] = { "LEDS", "MIDI", "SYNC", "SCREEN", "MONITOR", "UPDATE", "ABOUT" };
+enum SettingsItem : uint8_t { SI_LEDS, SI_MIDI, SI_SYNC, SI_SCREEN, SI_MONITOR, SI_UPDATE, SI_ABOUT };
 
 // ---------- DFU (firmware update) entry ----------
 // enterDfu() leaves a flag in an RTC backup register (kept across a reset,
@@ -550,11 +568,11 @@ void processTick() {
   }
   if (clk[u] && !ext) usb_tx_enqueue(0xF8);   // USB mirrors the selected output, divider included
 
-  // 5b. Analogue sync: SYNC_PPQN pulses per beat of the divided clock
+  // 5b. Analogue sync: sync_ppqn[i] pulses per beat of the divided clock
   {
     const uint32_t tick_us = tickPeriodUs();
     for (int i = 0; i < 2; i++) {
-      const uint32_t every = (uint32_t)(PPQN / SYNC_PPQN) * clk_div[i];   // ticks between pulses
+      const uint32_t every = (uint32_t)(PPQN / sync_ppqn[i]) * clk_div[i];   // ticks between pulses
       if (running[i] && (out_tick[i] % every == 0)) {
         uint32_t width = (tick_us * every) / 2;          // never more than 50% duty
         if (width > SYNC_PULSE_US) width = SYNC_PULSE_US;
@@ -740,6 +758,8 @@ void sendState() {
   uint32_t lt = loop_tick;
   m[n++] = (uint8_t)((lt / PPQN) % 4);                 // beat in bar
   m[n++] = (uint8_t)((lt / (PPQN * 4)) % wait_bars);   // bar in WAIT LEN
+  m[n++] = sync_ppqn[0];                               // v1.6.1+
+  m[n++] = sync_ppqn[1];
   m[n++] = 0xF7;
   sendSysex(m, n);
 }
@@ -767,6 +787,7 @@ void requestPlayStop(uint8_t i, uint8_t action) {   // action: 0 toggle, 1 start
 }
 
 void midiApply(uint8_t item, uint8_t idx);   // defined with the MIDI menu
+void syncApply(uint8_t out, uint8_t idx);    // defined with the SYNC menu
 void factoryReset();
 
 uint8_t findIndex(const uint8_t* opts, uint8_t n, uint16_t v) {
@@ -807,6 +828,10 @@ void setParam(uint8_t p, uint16_t v) {
       }
       break;
     case PARAM_EXT_TPT: setExtTransport(v != 0); break;
+    case PARAM_SYNC1:
+    case PARAM_SYNC2:
+      if ((idx = findIndex(sync_options, N_SYNC, v)) != 0xFF) syncApply(p - PARAM_SYNC1, idx);
+      break;
   }
   ui_dirty = true;
 }
@@ -1131,6 +1156,15 @@ void midiApply(uint8_t item, uint8_t idx) {
   save_pending = true;
 }
 
+// ---------- SYNC menu values ----------
+uint8_t syncGet(uint8_t out) { return indexOf(sync_options, N_SYNC, sync_ppqn[out]); }
+
+void syncApply(uint8_t out, uint8_t idx) {
+  if (out > 1 || idx >= N_SYNC || idx == syncGet(out)) return;
+  sync_ppqn[out] = sync_options[idx];   // takes effect on the next tick
+  save_pending = true;
+}
+
 // ---------- Encoder ISR ----------
 void onEncoder() {
   static uint8_t state = 0;
@@ -1187,6 +1221,14 @@ void processEncoder() {
       edit_idx = wrapAdd(edit_idx, delta, midiOptionCount(midi_menu_sel));
       ui_dirty = true;
       break;
+    case Screen::SYNC_VIEW:
+      sync_menu_sel = wrapAdd(sync_menu_sel, delta, 2);
+      ui_dirty = true;
+      break;
+    case Screen::SYNC_EDIT:
+      edit_idx = wrapAdd(edit_idx, delta, N_SYNC);
+      ui_dirty = true;
+      break;
     case Screen::SAVER_EDIT:
       edit_idx = wrapAdd(edit_idx, delta, N_SAVER);
       ui_dirty = true;
@@ -1222,6 +1264,10 @@ void onEncoderButton() {
           screen = Screen::MIDI_VIEW;
           midi_menu_sel = 0;
           break;
+        case SI_SYNC:
+          screen = Screen::SYNC_VIEW;
+          sync_menu_sel = 0;
+          break;
         case SI_SCREEN:
           edit_idx = saver_idx;
           screen = Screen::SAVER_EDIT;
@@ -1253,6 +1299,14 @@ void onEncoderButton() {
     case Screen::MIDI_EDIT:
       midiApply(midi_menu_sel, edit_idx);
       screen = Screen::MIDI_VIEW;
+      break;
+    case Screen::SYNC_VIEW:
+      edit_idx = syncGet(sync_menu_sel);
+      screen = Screen::SYNC_EDIT;
+      break;
+    case Screen::SYNC_EDIT:
+      syncApply(sync_menu_sel, edit_idx);
+      screen = Screen::SYNC_VIEW;
       break;
     case Screen::SAVER_EDIT:
       if (edit_idx != saver_idx) { saver_idx = edit_idx; save_pending = true; }
@@ -1312,6 +1366,12 @@ void onSettingsButton() {
       break;
     case Screen::MIDI_EDIT:
       screen   = Screen::MIDI_VIEW;     // cancel: nothing was applied
+      break;
+    case Screen::SYNC_VIEW:
+      screen   = Screen::SETTINGS;
+      break;
+    case Screen::SYNC_EDIT:
+      screen   = Screen::SYNC_VIEW;     // cancel: nothing was applied
       break;
     case Screen::SAVER_EDIT:
       screen   = Screen::SETTINGS;      // cancel
@@ -1609,6 +1669,32 @@ void drawUI() {
       break;
     }
 
+    case Screen::SYNC_VIEW: {
+      display.setTextSize(3);
+      for (uint8_t row = 0; row < 2; row++) {
+        int16_t y = row ? 30 : 12;
+        display.setCursor(0, y);
+        if (row == sync_menu_sel) display.print(">");
+        display.print(row ? "SYNC 2" : "SYNC 1");
+        char val[8];
+        snprintf(val, sizeof(val), "%u", sync_ppqn[row]);
+        drawRightAligned(val, y);
+      }
+      break;
+    }
+
+    case Screen::SYNC_EDIT: {
+      display.setTextSize(3);
+      display.setCursor(0, 12);
+      display.print(sync_menu_sel ? ">SYNC 2" : ">SYNC 1");
+      display.setCursor(0, 30);
+      display.print("PPQN >");
+      char val[8];
+      snprintf(val, sizeof(val), "%u", sync_options[edit_idx]);
+      drawRightAligned(val, 30);
+      break;
+    }
+
     case Screen::SAVER_EDIT: {
       display.setTextSize(3);
       display.setCursor(0, 12);
@@ -1765,6 +1851,8 @@ void loadSettings() {
   if (b >= BPM_MIN && b <= BPM_MAX) bpm = b;   // else keep the default
   clk_src      = (s.clk_src == CLK_USB) ? CLK_USB : CLK_INT;
   ext_tpt_host = (s.ext_tpt != 0);             // 0 = FREE, else (incl. erased) HOST
+  for (int i = 0; i < 2; i++)                  // erased / unknown -> 24
+    sync_ppqn[i] = (findIndex(sync_options, N_SYNC, s.sync_ppqn[i]) != 0xFF) ? s.sync_ppqn[i] : SYNC_PPQN_DEFAULT;
 }
 
 // Web editor: back to the defaults (loop context, stops all clocks)
@@ -1781,6 +1869,7 @@ void factoryReset() {
   usb_out_channel = 0;
   usb_out_req     = -1;
   saver_idx       = 2;
+  sync_ppqn[0]    = sync_ppqn[1] = SYNC_PPQN_DEFAULT;
   bpm             = 120;
   applyTempo();
   tickTimer->resume();
@@ -1794,7 +1883,8 @@ void saveSettings() {
     { clk_div[0], clk_div[1] },
     (uint8_t)stop_quant, saver_idx, EEPROM_MAGIC,
     (uint8_t)(bpm & 0xFF), (uint8_t)(bpm >> 8),
-    clk_src, (uint8_t)(ext_tpt_host ? 1 : 0)
+    clk_src, (uint8_t)(ext_tpt_host ? 1 : 0),
+    { sync_ppqn[0], sync_ppqn[1] }
   };
   eeprom_buffer_fill();
   const uint8_t* p = (const uint8_t*)&ns;

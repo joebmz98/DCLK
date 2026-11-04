@@ -2,7 +2,7 @@
 
 ![DCLK](assets/Images/EDITS/DCLK_6.JPG)
 
-**.axs instruments** · Firmware v1.6 · Hardware v1.0
+**.axs instruments** · Firmware v1.6.1 · Hardware v1.0
 
 DCLK is a dual MIDI clock built around an STM32F411 Black Pill. It sends
 MIDI clock to two TRS (Type A) outputs and over USB MIDI, with quantised
@@ -39,8 +39,9 @@ section walks through it.
 - Per-output clock divide: /1 /2 /3 /4 /6 /8
 - USB MIDI clock follows either output
 - Two 5 V analogue sync outputs (3.5 mm TRS): clock pulse on the tip
-  (2 PPQN, after the channel's divider), run gate on the ring. SYNC 1
-  follows CH1, SYNC 2 follows CH2 (firmware 1.6 and later)
+  (1, 2, 4, 8, 12 or 24 PPQN per output, default 24, after the channel's
+  divider), run gate on the ring. SYNC 1 follows CH1, SYNC 2 follows CH2
+  (firmware 1.6 and later; PPQN setting from 1.6.1)
 - Screen saver: dims while a clock runs, switches off when stopped, with a
   slow breathing BEAT LED in standby
 - Capacitive touch buttons (CAP1206) for CH1, CH2 and Settings
@@ -70,6 +71,7 @@ MIDI channel: "CH1" and "CH2" mean the two output jacks.
 | --- | --- |
 | LEDS | Brightness: LO / MID / HI |
 | MIDI | WAIT LEN · STOP Q · CH1 DIV · CH2 DIV · USB OUT |
+| SYNC | SYNC 1 / SYNC 2 pulses per quarter note: 1 / 2 / 4 / 8 / 12 / 24 |
 | SCREEN | SAVER: OFF / 1 / 5 / 10 / 30 min |
 | MONITOR | USB and clock diagnostics; encoder push toggles a USB test note (C4, ch 1) |
 | UPDATE | Restart into DFU mode for the web flasher (push the encoder to confirm, SETTINGS cancels) |
