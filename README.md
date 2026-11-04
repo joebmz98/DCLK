@@ -2,7 +2,7 @@
 
 ![DCLK](assets/Images/EDITS/DCLK_6.JPG)
 
-**.axs instruments** · Firmware v1.4 · Hardware v1.0
+**.axs instruments** · Firmware v1.5 · Hardware v1.0
 
 DCLK is a dual MIDI clock built around an STM32F411 Black Pill. It sends
 MIDI clock to two TRS (Type A) outputs and over USB MIDI, with quantised
@@ -18,9 +18,12 @@ software to install. Your saved settings are kept. Flasher source:
 [DCLK-Flasher](https://github.com/joebmz98/DCLK-Flasher).
 
 1. Plug DCLK into the computer with a USB‑C data cable.
-2. Hold **BOOT0**, tap **NRST**, keep holding BOOT0 for about a second.
-   The screen and LEDs stay off in this mode.
-3. Open the flasher, click **Flash Firmware** and choose **STM32 BOOTLOADER**.
+2. Put DCLK into update mode: click **Enter update mode** on the flasher,
+   or choose **Settings > UPDATE** and push the encoder. The screen shows
+   **DFU READY**. (Firmware 1.5 and later. On older firmware, or if DCLK
+   won't start: hold **BOOT0**, tap **NRST**, keep holding BOOT0 for about a
+   second. The screen and LEDs stay off in that mode.)
+3. Click **Flash Firmware** and choose **STM32 BOOTLOADER**.
 
 Windows needs a one-time WinUSB driver (Zadig); the flasher's Troubleshooting
 section walks through it.
@@ -66,6 +69,7 @@ MIDI channel: "CH1" and "CH2" mean the two output jacks.
 | MIDI | WAIT LEN · STOP Q · CH1 DIV · CH2 DIV · USB OUT |
 | SCREEN | SAVER: OFF / 1 / 5 / 10 / 30 min |
 | MONITOR | USB and clock diagnostics; encoder push toggles a USB test note (C4, ch 1) |
+| UPDATE | Restart into DFU mode for the web flasher (push the encoder to confirm, SETTINGS cancels) |
 | ABOUT | Product, maker and firmware version |
 
 ## Connections

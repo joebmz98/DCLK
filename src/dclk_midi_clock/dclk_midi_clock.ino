@@ -1,7 +1,7 @@
 // ********************* //
 // DCLK                  //
 // Dual MIDI Clock       //
-// firmware version 1.4  //
+// firmware version 1.5  //
 // hardware version: 1.0 //
 // powered by STM32 BP   //
 // ********************* //
@@ -67,6 +67,12 @@
 //   Encoder button toggles a USB test note (C4, ch 1, once a second).
 //   T:Y means the CAP1206 touch controller answered and is configured.
 //
+// UPDATE menu: restarts DCLK into the STM32's built-in USB DFU bootloader
+//   (the same "STM32 BOOTLOADER" mode as holding BOOT0 and tapping NRST),
+//   ready for the web flasher. Encoder push confirms, SETTINGS cancels.
+//   The screen keeps showing "DFU READY" until new firmware starts or the
+//   unit is reset / power cycled. The web flasher can do the same over USB.
+//
 // ABOUT menu: product, maker and firmware version (FW_VERSION below).
 // ********************* //
 
@@ -83,6 +89,9 @@
 //   04 <out> <action>   TRANSPORT  out 0/1 (2 = both), action 0 toggle,
 //                                  1 start, 2 stop -> replies 42
 //   06 44 45 46         FACTORY RESET ("DEF") -> replies 42
+//   07 44 46 55         ENTER DFU ("DFU", v1.5+) -> replies 47, then stops
+//                       the clocks, saves settings and restarts into the
+//                       STM32 ROM DFU bootloader for the web flasher
 // Values are 14-bit: lo = v & 0x7F, hi = v >> 7. Param ids: PARAM_* below.
 // Changes are saved to flash with the usual rule (once all clocks stop).
 // ********************* //
@@ -119,13 +128,14 @@
 #include <Fonts/Picopixel.h>
 #include <EEPROM.h>
 #include <Adafruit_TinyUSB.h>
+#include <backup.h>          // core: RTC backup registers (DFU flag)
 
 #if !defined(ARDUINO_DCLK)
   #warning "Board is not 'DCLK Dual MIDI Clock' - USB clock may not be a clean 48 MHz"
 #endif
 
 // ---------- Firmware version (shown on the ABOUT screen; keep in sync with the header) ----------
-const char* const FW_VERSION = "1.4";
+const char* const FW_VERSION = "1.5";
 
 // ---------- Config ----------
 constexpr uint8_t  PPQN       = 24;
@@ -195,8 +205,8 @@ constexpr uint8_t SYSEX_PROTO = 1;           // bump if the message layout chang
 
 enum SysexCmd : uint8_t {
   CMD_GET_INFO = 0x01, CMD_GET_STATE = 0x02, CMD_SET = 0x03,
-  CMD_TRANSPORT = 0x04, CMD_FACTORY_RESET = 0x06,
-  RPL_INFO = 0x41, RPL_STATE = 0x42
+  CMD_TRANSPORT = 0x04, CMD_FACTORY_RESET = 0x06, CMD_ENTER_DFU = 0x07,
+  RPL_INFO = 0x41, RPL_STATE = 0x42, RPL_DFU = 0x47
 };
 
 enum Param : uint8_t {
@@ -307,6 +317,7 @@ enum class Screen : uint8_t {
   MIDI_VIEW, MIDI_EDIT,
   SAVER_EDIT,
   DIAG,                        // MONITOR: USB diagnostics
+  UPDATE_CONFIRM,              // UPDATE: confirm restart into DFU
   ABOUT
 };
 Screen  screen        = Screen::MAIN;
@@ -315,9 +326,22 @@ uint8_t midi_menu_sel = 0;
 uint8_t edit_idx      = 0;     // option index being edited (MIDI_EDIT / SAVER_EDIT)
 uint8_t led_edit_orig = 0;     // LED level to restore on cancel
 
-constexpr uint8_t N_SETTINGS = 5;
-const char* const settings_labels[N_SETTINGS] = { "LEDS", "MIDI", "SCREEN", "MONITOR", "ABOUT" };
-enum SettingsItem : uint8_t { SI_LEDS, SI_MIDI, SI_SCREEN, SI_MONITOR, SI_ABOUT };
+constexpr uint8_t N_SETTINGS = 6;
+const char* const settings_labels[N_SETTINGS] = { "LEDS", "MIDI", "SCREEN", "MONITOR", "UPDATE", "ABOUT" };
+enum SettingsItem : uint8_t { SI_LEDS, SI_MIDI, SI_SCREEN, SI_MONITOR, SI_UPDATE, SI_ABOUT };
+
+// ---------- DFU (firmware update) entry ----------
+// enterDfu() leaves a flag in an RTC backup register (kept across a reset,
+// cleared on power loss) and resets. The first thing setup() does is look
+// for it and, if set, jump to the ROM bootloader before any peripheral is
+// started. Jumping from the running firmware instead would leave USB, the
+// timers and the UARTs half set up, and the bootloader's USB often won't
+// enumerate. DR5 is clear of the core's own HID-bootloader slots (DR4, DR10).
+constexpr uint32_t DFU_BKP_INDEX = LL_RTC_BKP_DR5;
+constexpr uint32_t DFU_MAGIC     = 0xDF0B007Bu;
+constexpr uint32_t SYSMEM_BASE   = 0x1FFF0000u;   // STM32F411 ROM bootloader
+volatile bool      dfu_requested = false;         // set by SysEx, acted on in loop()
+void enterDfu();
 
 bool test_note_enabled = false;   // MONITOR: encoder button toggles
 
@@ -743,6 +767,13 @@ void handleSysex(const uint8_t* d, uint8_t n) {   // d excludes F0 / F7
       if (n >= 7 && d[4] == 'D' && d[5] == 'E' && d[6] == 'F') factoryReset();
       sendState();
       return;
+    case CMD_ENTER_DFU:
+      if (n >= 7 && d[4] == 'D' && d[5] == 'F' && d[6] == 'U') {
+        const uint8_t ack[] = { 0xF0, SYSEX_MFR, SYSEX_ID1, SYSEX_ID2, RPL_DFU, SYSEX_PROTO, 0xF7 };
+        sendSysex(ack, sizeof(ack));
+        dfu_requested = true;          // restart from loop(), after the reply is sent
+      }
+      return;
   }
 }
 
@@ -1096,6 +1127,8 @@ void processEncoder() {
       ui_dirty = true;
       break;
     case Screen::DIAG:
+    case Screen::UPDATE_CONFIRM:
+    case Screen::ABOUT:
       break;
   }
 }
@@ -1111,6 +1144,9 @@ void onEncoderButton() {
       break;
     case Screen::ABOUT:
       screen = Screen::SETTINGS;
+      break;
+    case Screen::UPDATE_CONFIRM:
+      enterDfu();                      // doesn't return
       break;
     case Screen::SETTINGS:
       switch (menu_sel) {
@@ -1128,6 +1164,9 @@ void onEncoderButton() {
         case SI_MONITOR:
           test_note_enabled = false;
           screen = Screen::DIAG;
+          break;
+        case SI_UPDATE:
+          screen = Screen::UPDATE_CONFIRM;
           break;
         case SI_ABOUT:
           screen = Screen::ABOUT;
@@ -1193,6 +1232,7 @@ void onSettingsButton() {
       screen   = Screen::SETTINGS;
       break;
     case Screen::ABOUT:
+    case Screen::UPDATE_CONFIRM:       // cancel
       screen   = Screen::SETTINGS;
       break;
     case Screen::LED_VIEW:
@@ -1558,6 +1598,17 @@ void drawUI() {
       break;
     }
 
+    // ---------- UPDATE (confirm) ----------
+    case Screen::UPDATE_CONFIRM: {
+      display.setTextSize(3);
+      display.setCursor(0, 12);
+      display.print(">UPDATE");
+      display.setCursor(0, 30);
+      display.print("SET >");
+      drawRightAligned("DFU", 30);
+      break;
+    }
+
     // ---------- ABOUT ----------
     case Screen::ABOUT: {
       char fw[16];
@@ -1692,8 +1743,97 @@ void saveSettings() {
   if (changed) eeprom_buffer_flush();   // one sector erase + program
 }
 
+// ---------- DFU entry ----------
+// Stop cleanly, save, show "DFU READY", then reset into the bootloader. The
+// SSD1306 keeps its picture through the reset (no reset line, and the
+// bootloader never touches I2C), so the message stays up while flashing.
+void enterDfu() {
+  tickTimer->pause();
+  stopAll();                                         // MIDI Stop on DIN + USB
+
+  // Send the Stop bytes and any SysEx reply, finish the screen flush
+  uint32_t t0 = millis();
+  while (millis() - t0 < 80) {
+    TinyUSBDevice.task();
+    processUSB_TX();
+    displayService();
+  }
+  MidiOut1.flush();
+  MidiOut2.flush();
+
+  analogWrite(PIN_LED_BEAT,      0);
+  analogWrite(PIN_LED_STATUS[0], 0);
+  analogWrite(PIN_LED_STATUS[1], 0);
+
+  if (save_pending || bpm_save_armed) saveSettings();   // all stopped: safe to write flash
+
+  if (screen_asleep) display.ssd1306_command(SSD1306_DISPLAYON);
+  display.dim(false);
+  display.clearDisplay();
+  display.setFont(&Picopixel);
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextSize(3);
+  display.setCursor(0, 12);
+  display.print("UPDATE");
+  display.setCursor(0, 30);
+  display.print("DFU READY");
+  display.display();                                 // blocking is fine here
+
+  TinyUSBDevice.detach();                            // host sees DCLK leave
+  delay(50);
+
+  __HAL_RCC_PWR_CLK_ENABLE();
+  enableBackupDomain();
+  setBackupRegister(DFU_BKP_INDEX, DFU_MAGIC);
+  NVIC_SystemReset();
+}
+
+// Called first thing in setup(): if enterDfu() left the flag, hand over to
+// the ROM bootloader. Peripherals are only at their reset/core-init state.
+__attribute__((noinline, noreturn)) static void jumpToSystemBootloader() {
+  HAL_RCC_DeInit();                                  // back to HSI (needs SysTick for timeouts)
+  HAL_DeInit();                                      // reset every peripheral, GPIO included
+  SysTick->CTRL = 0;
+  SysTick->LOAD = 0;
+  SysTick->VAL  = 0;
+  __disable_irq();
+  for (uint8_t i = 0; i < sizeof(NVIC->ICER) / sizeof(NVIC->ICER[0]); i++) {
+    NVIC->ICER[i] = 0xFFFFFFFF;
+    NVIC->ICPR[i] = 0xFFFFFFFF;
+  }
+
+  // PA10 is USART1_RX, which the bootloader also listens on. MIDI OUT 1
+  // leaves it unconnected, and noise there can make the bootloader choose
+  // the serial port instead of USB. Hold it high with the internal pull-up.
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  GPIOA->MODER = (GPIOA->MODER & ~(3u << (10 * 2)));                     // input
+  GPIOA->PUPDR = (GPIOA->PUPDR & ~(3u << (10 * 2))) | (1u << (10 * 2));  // pull-up
+
+  __HAL_RCC_SYSCFG_CLK_ENABLE();
+  __HAL_SYSCFG_REMAPMEMORY_SYSTEMFLASH();            // system memory at 0x00000000
+  SCB->VTOR = 0;
+  __DSB();
+  __ISB();
+
+  const uint32_t sp = *(volatile uint32_t*)(SYSMEM_BASE);
+  const uint32_t pc = *(volatile uint32_t*)(SYSMEM_BASE + 4);
+  __set_MSP(sp);
+  __enable_irq();
+  ((void (*)(void))pc)();
+  while (true) { }
+}
+
+void checkDfuRequest() {
+  __HAL_RCC_PWR_CLK_ENABLE();
+  enableBackupDomain();
+  if (getBackupRegister(DFU_BKP_INDEX) != DFU_MAGIC) return;
+  setBackupRegister(DFU_BKP_INDEX, 0);               // one shot: NRST after this boots normally
+  jumpToSystemBootloader();
+}
+
 // ---------- Setup / loop ----------
 void setup() {
+  checkDfuRequest();   // before anything else: may not return
   loadSettings();
   updateTiming();
 
@@ -1807,4 +1947,6 @@ void loop() {
     drawUI();
   }
   displayService();
+
+  if (dfu_requested) enterDfu();   // web flasher asked for update mode
 }
