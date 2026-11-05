@@ -1582,17 +1582,17 @@ void drawUI() {
 
   switch (screen) {
     // Main screen (v1.6.2 layout):
-    //   rows 0-5   CH1 / CH2 tabs: white with black text = playing,
-    //              black with white text = stopped (or waiting to start)
+    //   rows 0-5   CH1 / CH2 tabs, shown only while that output plays
+    //              (white with black text); blank when stopped or waiting
     //   rows 9-28  tempo, Picopixel x4
     //   rows 30-31 beat bars: the current beat stands 1 px taller
     case Screen::MAIN: {
       display.setTextSize(1);
       for (int i = 0; i < 2; i++) {
+        if (!running[i]) continue;
         const int16_t x0 = i * 64;
-        const bool on = running[i];
-        if (on) display.fillRect(x0, 0, 63, 6, SSD1306_WHITE);
-        display.setTextColor(on ? SSD1306_BLACK : SSD1306_WHITE);
+        display.fillRect(x0, 0, 63, 6, SSD1306_WHITE);
+        display.setTextColor(SSD1306_BLACK);
         const char* label = i ? "CH2" : "CH1";
         int16_t bx, by; uint16_t bw, bh;
         display.getTextBounds(label, 0, 5, &bx, &by, &bw, &bh);

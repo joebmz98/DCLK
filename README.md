@@ -65,8 +65,8 @@ MIDI channel: "CH1" and "CH2" mean the two output jacks.
   on the beat while waiting for a quantised stop, off when stopped.
 - **BEAT:** flashes on every beat.
 
-**Main screen:** CH1 / CH2 tabs along the top are white while that output
-plays and black when it's stopped (firmware 1.6.2 and later). Below them
+**Main screen:** a white CH1 / CH2 tab appears along the top while that
+output plays, and disappears when it stops (firmware 1.6.2 and later). Below them
 are the tempo and four beat bars; the current beat stands taller.
 
 **Menus**
