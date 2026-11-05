@@ -1,7 +1,7 @@
 // ********************* //
 // DCLK                  //
 // Dual MIDI Clock       //
-// firmware version 1.6.1//
+// firmware version 1.6.2//
 // hardware version: 1.0 //
 // powered by STM32 BP   //
 // ********************* //
@@ -151,7 +151,7 @@
 #endif
 
 // ---------- Firmware version (shown on the ABOUT screen; keep in sync with the header) ----------
-const char* const FW_VERSION = "1.6.1";
+const char* const FW_VERSION = "1.6.2";
 
 // ---------- Config ----------
 constexpr uint8_t  PPQN       = 24;
@@ -1581,9 +1581,28 @@ void drawUI() {
   display.setFont(&Picopixel);
 
   switch (screen) {
+    // Main screen (v1.6.2 layout):
+    //   rows 0-5   CH1 / CH2 tabs: white with black text = playing,
+    //              black with white text = stopped (or waiting to start)
+    //   rows 9-28  tempo, Picopixel x4
+    //   rows 30-31 beat bars: the current beat stands 1 px taller
     case Screen::MAIN: {
+      display.setTextSize(1);
+      for (int i = 0; i < 2; i++) {
+        const int16_t x0 = i * 64;
+        const bool on = running[i];
+        if (on) display.fillRect(x0, 0, 63, 6, SSD1306_WHITE);
+        display.setTextColor(on ? SSD1306_BLACK : SSD1306_WHITE);
+        const char* label = i ? "CH2" : "CH1";
+        int16_t bx, by; uint16_t bw, bh;
+        display.getTextBounds(label, 0, 5, &bx, &by, &bw, &bh);
+        display.setCursor(x0 + 32 - (int16_t)bw / 2 - bx, 5);   // centred on the half
+        display.print(label);
+      }
+      display.setTextColor(SSD1306_WHITE);
+
       display.setTextSize(4);
-      display.setCursor(6, 22);
+      display.setCursor(6, 25);
       if (extMode()) {
         display.print("EXT: ");
         if (shown_ext_bpm) display.print(shown_ext_bpm);
@@ -1598,13 +1617,9 @@ void drawUI() {
         active_bar = (loop_tick / PPQN) % 4;
       }
 
-      int bar_w = display.width() / 4;
       for (int i = 0; i < 4; i++) {
-        int y_pos = 28;
-        if (i == active_bar) {
-          y_pos = 31;
-        }
-        display.fillRect(i * bar_w + 2, y_pos, bar_w - 4, 4, SSD1306_WHITE);
+        if (i == active_bar) display.fillRect(6 + i * 28, 30, 26, 2, SSD1306_WHITE);
+        else                 display.fillRect(6 + i * 28, 31, 26, 1, SSD1306_WHITE);
       }
       break;
     }
