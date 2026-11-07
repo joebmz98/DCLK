@@ -133,6 +133,7 @@ To publish a release, use **Sketch > Export Compiled Binary**, copy the
 
 ```
 src/dclk_midi_clock/   firmware sketch, compiled builds, font
+legacy/                every earlier firmware release (hex, bin, source)
 build/DCLK-MIDI-Clock/ KiCad project and production files
 lib/DCLK.pretty/       custom footprints
 assets/                artwork (polarity marking)
