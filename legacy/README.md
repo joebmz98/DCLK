@@ -1,8 +1,9 @@
 # DCLK legacy firmware
 
-Every earlier DCLK firmware release. The current release lives in
-[`src/dclk_midi_clock`](../src/dclk_midi_clock) and is what the
-[web flasher](https://github.com/joebmz98/DCLK-Flasher) installs.
+Every DCLK firmware release, including the current one. The working copy
+of the firmware lives in [`src/dclk_midi_clock`](../src/dclk_midi_clock),
+and the [web flasher](https://github.com/joebmz98/DCLK-Flasher) installs
+the latest release.
 
 Each `vX.Y` folder holds:
 
@@ -24,6 +25,7 @@ Each `vX.Y` folder holds:
 | [v1.5](v1.5) | 2026-11-04 | Enter DFU (update) mode from the menu or over USB | hex, bin |
 | [v1.6](v1.6) | 2026-11-04 | Analogue sync outputs driven (2 PPQN) | hex, bin |
 | [v1.6.1](v1.6.1) | 2026-11-04 | SYNC menu: per-output PPQN, default 24 | hex, bin |
+| [v1.6.2](v1.6.2) | 2026-11-05 | CH1 / CH2 tabs on the main screen while playing; thinner beat bars | hex, bin |
 
 From v1.4 the firmware expects the final PCB (CAP1206 touch pads); v1.3 and
 earlier read plain buttons and match the prototype.
