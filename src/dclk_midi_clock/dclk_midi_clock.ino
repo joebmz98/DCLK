@@ -1,7 +1,7 @@
 // ********************* //
 // DCLK                  //
 // Dual MIDI Clock       //
-// firmware version 1.6.2//
+// firmware version 1.6.3//
 // hardware version: 1.0 //
 // powered by STM32 BP   //
 // ********************* //
@@ -151,7 +151,7 @@
 #endif
 
 // ---------- Firmware version (shown on the ABOUT screen; keep in sync with the header) ----------
-const char* const FW_VERSION = "1.6.2";
+const char* const FW_VERSION = "1.6.3";
 
 // ---------- Config ----------
 constexpr uint8_t  PPQN       = 24;
@@ -400,6 +400,9 @@ uint16_t disp_pos  = 0;
 // ---------- Helpers ----------
 inline bool extMode()     { return clk_src == CLK_USB; }
 inline bool hostGrid()    { return clk_src == CLK_USB && ext_tpt_host; }
+// v1.6.3: the beat bars and BEAT LED follow the beat while an output runs,
+// or (USB clock, HOST transport) while the host plays even if both are off
+inline bool beatLive()    { return running[0] || running[1] || (hostGrid() && host_running); }
 inline bool extPresent()  { return ext_seen && (millis() - ext_last_ms) < EXT_PRESENT_MS; }
 void updateTiming() {
   constexpr uint32_t ticks_per_bar = PPQN * 4;
@@ -1505,7 +1508,7 @@ void updateStatusLeds() {
   const uint8_t led_flash = led_levels[led_level].flash;
   uint32_t t    = millis() % FADE_PERIOD_MS;
   uint32_t tick = loop_tick;
-  bool any_running = running[0] || running[1];
+  bool any_running = beatLive();   // incl. host playing with both outputs off (v1.6.3)
 
   uint8_t phase = 0;
   if (any_running) {
@@ -1613,7 +1616,7 @@ void drawUI() {
       }
 
       int active_bar = -1;
-      if (running[0] || running[1]) {
+      if (beatLive()) {
         active_bar = (loop_tick / PPQN) % 4;
       }
 
@@ -2093,7 +2096,7 @@ void loop() {
   // Trigger a redraw when the active beat bar changes
   static int last_active_bar = -2;
   int current_active_bar = -1;
-  if (running[0] || running[1]) {
+  if (beatLive()) {
     current_active_bar = (loop_tick / PPQN) % 4;
   }
   if (current_active_bar != last_active_bar) {
